@@ -400,7 +400,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Timelinestamp daily physical fingerprint")
-    parser.add_argument("--host", default="127.0.0.1", help="Web interface address (default: phone only)")
+    parser.add_argument("--host", default="127.0.0.1", help="Web interface address (default: local only)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=LOCAL_DATA / "timelinestamp.sqlite3")
     parser.add_argument("--headless", action="store_true", help="Collect without starting the local web server")
