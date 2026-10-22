@@ -23,6 +23,11 @@ if [ -f "$HOME/.config/timelinestamp/ssh.env" ]; then
     python "$project_dir/android/ssh-watchdog.py" >/dev/null 2>&1 &
 fi
 while :; do
+    # Pick up repository and token changes after a collector restart.
+    . "$config_file"
+    token_file="${TIMELINESTAMP_TOKEN_FILE:-$HOME/.config/timelinestamp/github-token}"
+    backup_dir="${TIMELINESTAMP_BACKUP_DIR:-$HOME/storage/shared/TimeLineStamp-backups}"
+    repo="${TIMELINESTAMP_REPO:-}"
     if [ -f "$state_dir/launcher.log" ] && [ "$(wc -c < "$state_dir/launcher.log")" -gt 1000000 ]; then
         mv "$state_dir/launcher.log" "$state_dir/launcher.log.old"
     fi
