@@ -8,9 +8,30 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from timelinestamp import Collector, Store, beacon_payload, canonical, iso, noaa_payload, parse_utc
+from initial_snapshot import create_initial_snapshot
 
 
 class TimelinestampTests(unittest.TestCase):
+    def test_initial_snapshot_uses_fixed_received_cutoff(self):
+        with tempfile.TemporaryDirectory() as folder:
+            store = Store(Path(folder) / "test.sqlite3")
+            day = "2026-10-20"
+            for source in ("nist", "nqsn", "noaa_mag", "noaa_wind"):
+                event = day + "T12:00:00Z"
+                store.add_observation(source, event, event, {"value": source}, {}, "f" * 64, "test")
+            cutoff = datetime(2026, 10, 20, 12, 5, tzinfo=timezone.utc)
+            with store.connect() as db:
+                db.execute("UPDATE observations SET received_at=?", (day + "T12:01:00Z",))
+            first = create_initial_snapshot(store, cutoff)
+            self.assertEqual(first["day"], day)
+            self.assertEqual(first["quality"], "partial")
+            self.assertRegex(first["coefficient"], r"^1\.\d{6}$")
+            with store.connect() as db:
+                db.execute("""INSERT INTO observations(source,event_time,slot_time,received_at,payload,raw,response_sha256,url)
+                    VALUES(?,?,?,?,?,?,?,?)""", ("nist", day + "T12:02:00Z", day + "T12:02:00Z",
+                    day + "T12:06:00Z", '{"value":"late"}', '{}', "f" * 64, "test"))
+            self.assertEqual(create_initial_snapshot(store, cutoff), first)
+
     def test_finalized_day_never_changes(self):
         with tempfile.TemporaryDirectory() as folder:
             store = Store(Path(folder) / "test.sqlite3")

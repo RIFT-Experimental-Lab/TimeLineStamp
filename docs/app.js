@@ -21,6 +21,10 @@
       coefficient:'Coefficient', noCoefficient:'No sealed daily coefficient yet', waitingSeal:'AWAITING FIRST DAILY SEAL',
       mailSubject:'TimeLineStamp — discrepancy', mailDay:'UTC date', mailRemembered:'Number I remember', mailShown:'Number shown now', mailWhen:'When I noticed the difference',
       good:'● COMPLETE DATA', partial:'● INCOMPLETE DATA', noQuantum:'● QUANTUM DATA UNAVAILABLE',
+      initial:'INITIAL SNAPSHOT', initialState:'CAPTURED · INCOMPLETE', initialIntro:'An initial fingerprint from the measurements collected so far. This fixed snapshot covers only part of a UTC day; the first daily coefficient will be sealed separately.',
+      initialLock:'INITIAL SNAPSHOT · NOT A DAILY RECORD', initialStreams:'Measurements included in this fixed initial snapshot. Collection continues for the first full UTC day.', initialMail:'Record type: initial incomplete snapshot',
+      initialNumber:'SHORT MARKER FOR THE INITIAL SNAPSHOT', dailyNumber:'SHORT MARKER FOR THE DAILY RECORD', initialPeriod:'PARTIAL UTC WINDOW', initialInstrument:'TS-01 / INITIAL SNAPSHOT', dailyInstrument:'TS-01 / DAILY COEFFICIENT',
+      initialUpdated:'INITIAL SNAPSHOT PUBLISHED',
     },
     ru: {
       connecting:'ПОДКЛЮЧЕНИЕ К ЗАПИСИ', waiting:'СБОР ПЕРВЫХ СУТОК', updated:'ЗАПИСЬ ОБНОВЛЕНА', delayed:'ПУБЛИКАЦИЯ ЗАДЕРЖИВАЕТСЯ', unavailable:'ЗАПИСЬ НЕДОСТУПНА',
@@ -34,6 +38,10 @@
       coefficient:'Коэффициент', noCoefficient:'Суточный коэффициент ещё не зафиксирован', waitingSeal:'ОЖИДАНИЕ ПЕРВОЙ СУТОЧНОЙ ФИКСАЦИИ',
       mailSubject:'TimeLineStamp — расхождение', mailDay:'Дата UTC', mailRemembered:'Число, которое я помню', mailShown:'Число на странице сейчас', mailWhen:'Когда заметил расхождение',
       good:'● ПОЛНЫЕ ДАННЫЕ', partial:'● НЕПОЛНЫЕ ДАННЫЕ', noQuantum:'● НЕТ КВАНТОВЫХ ДАННЫХ',
+      initial:'ПЕРВИЧНЫЙ СНИМОК', initialState:'ЗАФИКСИРОВАН · НЕПОЛНЫЙ', initialIntro:'Первичный отпечаток из уже собранных измерений. Этот неизменяемый снимок охватывает лишь часть суток UTC; первый суточный коэффициент будет зафиксирован отдельно.',
+      initialLock:'ПЕРВИЧНЫЙ СНИМОК · НЕ СУТОЧНАЯ ЗАПИСЬ', initialStreams:'Измерения, вошедшие в первичный снимок. Сбор первых полных суток UTC продолжается.', initialMail:'Тип записи: первичный неполный снимок',
+      initialNumber:'КОРОТКАЯ МЕТКА ПЕРВИЧНОГО СНИМКА', dailyNumber:'КОРОТКАЯ МЕТКА ЗАПИСИ ЗА СУТКИ', initialPeriod:'НЕПОЛНЫЙ ПЕРИОД UTC', initialInstrument:'TS-01 / ПЕРВИЧНЫЙ СНИМОК', dailyInstrument:'TS-01 / СУТОЧНЫЙ КОЭФФИЦИЕНТ',
+      initialUpdated:'ПЕРВИЧНЫЙ СНИМОК ОПУБЛИКОВАН',
     },
     zh: {
       connecting:'正在连接记录', waiting:'正在采集首个完整日期', updated:'记录已更新', delayed:'发布延迟', unavailable:'记录不可用',
@@ -47,9 +55,14 @@
       coefficient:'系数', noCoefficient:'尚无已封存的每日系数', waitingSeal:'等待首次每日封存',
       mailSubject:'TimeLineStamp — 读数差异', mailDay:'UTC 日期', mailRemembered:'我记得的数字', mailShown:'页面当前显示的数字', mailWhen:'发现差异的时间',
       good:'● 数据完整', partial:'● 数据不完整', noQuantum:'● 量子数据不可用',
+      initial:'初始快照', initialState:'已记录 · 数据不完整', initialIntro:'根据目前已采集的测量值生成的初始指纹。这份固定快照只覆盖 UTC 日期的一部分；首个每日系数将另行封存。',
+      initialLock:'初始快照 · 非每日记录', initialStreams:'此固定初始快照包含的测量值。首个完整 UTC 日期的数据采集仍在继续。', initialMail:'记录类型：初始不完整快照',
+      initialNumber:'初始快照的简短标记', dailyNumber:'每日记录的简短标记', initialPeriod:'UTC 日期的部分时段', initialInstrument:'TS-01 / 初始快照', dailyInstrument:'TS-01 / 每日系数',
+      initialUpdated:'初始快照已发布',
     },
   };
   let snapshot = null;
+  let initial = null;
   let failed = false;
   const lang = () => document.documentElement.lang === 'ru' ? 'ru' : document.documentElement.lang.startsWith('zh') ? 'zh' : 'en';
   const t = () => dictionary[lang()];
@@ -103,14 +116,14 @@
       graph.appendChild(line);
     });
   }
-  function renderStreams(data, current) {
+  function renderStreams(data, record, isInitial) {
     const container = $('streams');
     container.replaceChildren();
-    put('streams-description', current ? t().shown : t().today);
+    put('streams-description', isInitial ? t().initialStreams : record ? t().shown : t().today);
     sources.forEach(([key, name, expected, subtitle], index) => {
-      const raw = current ? current.counts?.[key]?.received : data.progress?.[key]?.count;
+      const raw = record ? record.counts?.[key]?.received : data.progress?.[key]?.count;
       const count = Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 0;
-      const total = Number(current?.counts?.[key]?.expected) || expected;
+      const total = Number(record?.counts?.[key]?.expected) || expected;
       const row = add(container, 'div', '', 'stream');
       add(row, 'span', String(index+1).padStart(2,'0'), 'stream-no');
       const label = add(row, 'div', '', 'stream-name');
@@ -122,7 +135,7 @@
       add(bar, 'i', ''); add(bar, 'small', `${percent.toFixed(1)}%`);
     });
   }
-  function renderArchive(history) {
+  function renderArchive(history, initialRecord) {
     const body = $('history');
     body.replaceChildren();
     const entries = Array.isArray(history) ? history.slice(0,30) : [];
@@ -135,65 +148,85 @@
       const hash = add(row, 'td', String(item.digest || '—').slice(0,16) + '…', 'row-hash');
       hash.title = String(item.digest || '');
     }
-    if (!entries.length) {
+    if (initialRecord) {
+      const row = add(body, 'tr', '');
+      add(row, 'td', `${dateLabel(initialRecord.day)} · ${t().initial}`);
+      add(row, 'td', String(initialRecord.coefficient || '—'), 'row-value');
+      add(row, 'td', t().initialState, 'row-state partial');
+      const hash = add(row, 'td', String(initialRecord.digest || '—').slice(0,16) + '…', 'row-hash');
+      hash.title = String(initialRecord.digest || '');
+    }
+    if (!entries.length && !initialRecord) {
       const row = add(body, 'tr', '');
       add(row, 'td', t().empty).colSpan = 4;
     }
-    put('archive-count', `${t().count}: ${entries.length}`);
+    put('archive-count', `${t().count}: ${entries.length + (initialRecord ? 1 : 0)}`);
     put('archive-note', t().last30);
   }
-  function renderMail(current) {
+  function renderMail(record, isInitial) {
     const word = t();
-    const date = current?.day || '';
-    const number = current?.coefficient || '';
+    const date = record?.day || '';
+    const number = record?.coefficient || '';
     const subject = date ? `${word.mailSubject} ${date}` : word.mailSubject;
-    const body = `${word.mailDay}: ${date}\n${word.mailRemembered}: \n${word.mailShown}: ${number}\n${word.mailWhen}: `;
+    const body = `${isInitial ? word.initialMail + '\n' : ''}${word.mailDay}: ${date}\n${word.mailRemembered}: \n${word.mailShown}: ${number}\n${word.mailWhen}: `;
     document.querySelector('[data-mailto="discrepancy"]').href = `mailto:rift.research@outlook.com?${new URLSearchParams({subject, body})}`;
   }
   function render() {
     const data = snapshot || {};
     const current = data.current && typeof data.current === 'object' ? data.current : null;
+    const isInitial = !current && !!initial;
+    const record = current || initial;
     const word = t();
     const published = data.published_at ? new Date(data.published_at) : null;
     const valid = published && Number.isFinite(published.getTime());
     const stale = valid && Date.now() - published.getTime() > 3*3600_000;
-    put('live-label', failed ? word.unavailable : !valid ? snapshot ? word.waiting : word.connecting : stale ? word.delayed : current ? word.updated : word.waiting);
+    put('live-label', failed ? word.unavailable : !valid ? snapshot ? word.waiting : word.connecting : stale ? word.delayed : current ? word.updated : isInitial ? word.initialUpdated : word.waiting);
     put('last-published', valid ? `${word.published}: ${utcStamp(data.published_at)}` : word.noSnapshot);
-    const day = current?.day || data.first_full_day || '';
+    const day = record?.day || data.first_full_day || '';
     const shownDay = dateLabel(day);
     put('record-node', `${word.record} ${day || '—'} / UTC`);
-    put('rail-status', `${word.day}: ${shownDay}\nUTC\n${word.state}: ${current ? word.sealed : word.collecting}`);
+    put('rail-status', `${word.day}: ${shownDay}\nUTC\n${word.state}: ${isInitial ? word.initialState : current ? word.sealed : word.collecting}`);
     $('rail-status').style.whiteSpace = 'pre-line';
-    put('day-kicker', current ? `${word.daily} / ${shownDay}` : `${word.first} / ${shownDay}`);
-    put('page-intro', current ? word.introSealed : word.introWaiting);
-    put('lock-status', current ? `${word.sealed} · ${utcStamp(current.created_at)}` : word.waitingSeal);
+    put('day-kicker', isInitial ? `${word.initial} / ${shownDay}` : current ? `${word.daily} / ${shownDay}` : `${word.first} / ${shownDay}`);
+    put('page-intro', isInitial ? word.initialIntro : current ? word.introSealed : word.introWaiting);
+    put('instrument-label', isInitial ? word.initialInstrument : word.dailyInstrument);
+    put('lock-status', isInitial ? `${word.initialLock} · ${utcStamp(initial.created_at)}` : current ? `${word.sealed} · ${utcStamp(current.created_at)}` : word.waitingSeal);
     put('display-day', `${shownDay} · UTC`);
-    renderNumber(current?.coefficient);
-    put('quality', current ? current.quality === 'good' ? word.good : current.quality === 'partial' ? word.partial : word.noQuantum : word.collecting);
-    renderHash(current?.digest);
+    renderNumber(record?.coefficient);
+    put('number-note', isInitial ? word.initialNumber : word.dailyNumber);
+    put('quality', isInitial ? word.initialState : current ? current.quality === 'good' ? word.good : current.quality === 'partial' ? word.partial : word.noQuantum : word.collecting);
+    renderHash(record?.digest);
     put('period-label', word.period);
-    put('period', current ? shownDay : data.first_full_day ? `${word.firstDay}: ${shownDay}` : '—');
+    put('period', isInitial ? shownDay : current ? shownDay : data.first_full_day ? `${word.firstDay}: ${shownDay}` : '—');
+    put('period-note', isInitial ? `${word.initialPeriod}: ${utcStamp(initial.period_start)} – ${utcStamp(initial.created_at)}` : '00:00–24:00 UTC');
     put('next-lock-label', word.next);
     const seal = nextSeal(data.first_full_day);
     put('next-lock', seal ? utcStamp(seal.toISOString()) : '—');
     put('next-lock-note', word.nextNote);
     put('quantum-label', word.quantum);
-    const nist = Number(current?.counts?.nist?.received ?? data.progress?.nist?.count ?? 0);
-    const nqsn = Number(current?.counts?.nqsn?.received ?? data.progress?.nqsn?.count ?? 0);
+    const nist = Number(record?.counts?.nist?.received ?? data.progress?.nist?.count ?? 0);
+    const nqsn = Number(record?.counts?.nqsn?.received ?? data.progress?.nqsn?.count ?? 0);
     put('quantum-count', `${Math.max(0, nist+nqsn)} / 576`);
     put('quantum-note', word.quantumNote);
-    renderStreams(data, current);
-    renderArchive(data.history);
+    renderStreams(data, record, isInitial);
+    renderArchive(data.history, initial);
     put('library-endnote', word.photos);
-    renderMail(current);
+    renderMail(record, isInitial);
   }
   async function refresh() {
     try {
-      const response = await fetch(`./data/status.json?t=${Date.now()}`, {cache:'no-store'});
+      const [response, initialResponse] = await Promise.all([
+        fetch(`./data/status.json?t=${Date.now()}`, {cache:'no-store'}),
+        fetch(`./data/initial.json?t=${Date.now()}`, {cache:'no-store'}),
+      ]);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data.format !== 'timelinestamp-status-v1') throw new Error('Unsupported status format');
       snapshot = data;
+      if (initialResponse.ok) {
+        const candidate = await initialResponse.json();
+        initial = candidate.format === 'timelinestamp-initial-v1' ? candidate : null;
+      }
       failed = false;
     } catch (error) {
       failed = true;

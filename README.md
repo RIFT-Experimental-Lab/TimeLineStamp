@@ -23,9 +23,11 @@ Version 1 expects 288 pulses per beacon and up to 1,440 one-minute entries per N
 
 ## What the public page shows
 
-The site in [`docs/`](docs/) is static. When publication is enabled, the server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, current collection counts, and the publication time. The page shows a waiting state until a daily record exists and marks delayed updates.
+The site in [`docs/`](docs/) is static. The server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, current collection counts, and the publication time. A separate, fixed [initial snapshot](docs/data/initial.json) was calculated from the measurements collected on 2026-10-22 before the first full UTC day. The page labels its number as incomplete and keeps it in the archive after daily records begin. It is not a daily coefficient. The page marks delayed status updates.
 
 Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The browser never connects directly to the server.
+
+The initial snapshot uses only observations with event times on its UTC date before `created_at` and with `received_at` strictly before that time. Its manifest format is `timelinestamp-initial-v1`; the SHA-256 digest and short number use the same canonical encoding and coefficient mapping as daily records. The calculation is in [initial_snapshot.py](initial_snapshot.py). Unlike a daily record, it covers only part of a day and is never updated.
 
 The design source and fictional demonstration data live in [`demo/`](demo/). To rebuild both the offline demo and the public HTML after a design change, run:
 

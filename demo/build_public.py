@@ -59,18 +59,22 @@ def main() -> None:
     page = replace_once(page, r'(<section class="page-head".*?<h1 id="page-title">.*?</h1></div>)\s*<p>.*?</p>',
         r'\1<p id="page-intro"></p>')
     page = replace_once(page, r'<span class="lock">.*?</span>', '<span class="lock" id="lock-status"></span>')
+    page = replace_once(page, r'(<div class="instrument-top">)<span>.*?</span>',
+        r'\1<span id="instrument-label"></span>')
     page = replace_once(page, r'(<div class="display-label"><span>.*?</span>)<span>.*?</span>',
         r'\1<span id="display-day"></span>')
     page = replace_once(page, r'<div class="digits" role="img".*?</div>',
         '<div class="digits" id="meter" role="img" aria-label=""></div>')
     page = replace_once(page, r'(<div class="display-note"><span>.*?</span>)<span class="partial">.*?</span>',
         r'\1<span class="partial" id="quality"></span>')
+    page = replace_once(page, r'(<div class="display-note">)<span>.*?</span>',
+        r'\1<span id="number-note"></span>')
     page = replace_once(page, r'(<div class="signature">\s*<div><span class="micro">.*?</span>)<strong>.*?</strong>',
         r'\1<strong id="digest"></strong>')
     page = replace_once(page, r'(<div class="signature-graph"><svg.*?<g[^>]*>).*?(</g>)', r'\1\2')
     page = replace_once(page, r'<div class="facts".*?(?=\s*<section class="section theory")',
         '<div class="facts" aria-label="Period details">'
-        '<div class="fact"><span class="micro" id="period-label"></span><strong id="period"></strong><small>00:00–24:00 UTC</small></div>'
+        '<div class="fact"><span class="micro" id="period-label"></span><strong id="period"></strong><small id="period-note"></small></div>'
         '<div class="fact"><span class="micro" id="next-lock-label"></span><strong id="next-lock"></strong><small id="next-lock-note"></small></div>'
         '<div class="fact"><span class="micro" id="quantum-label"></span><strong id="quantum-count"></strong><small id="quantum-note"></small></div>'
         '</div>')
