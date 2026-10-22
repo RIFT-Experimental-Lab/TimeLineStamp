@@ -14,7 +14,7 @@
       noSnapshot:'No public snapshot yet', published:'Published', day:'DAY', state:'STATUS', collecting:'COLLECTING', sealed:'SEALED', record:'RECORD', daily:'DAILY RECORD', first:'FIRST UTC DAY',
       period:'PERIOD', next:'NEXT SEAL', quantum:'QUANTUM PULSES', firstDay:'First full day', nextNote:'UTC, after the next day', quantumNote:'Two quantum beacons',
       today:'Collection in progress today, UTC. Counts are provisional.', shown:'Measurements in the sealed UTC record. Missing entries remain visible.',
-      empty:'Records will appear after the first full UTC day.', count:'DAYS SHOWN', last30:'LATEST 30 DAYS',
+      empty:'Records will appear after the first full UTC day.', count:'RECORDS SHOWN', last30:'LATEST RECORDS',
       photos:'Photographs show instruments and the observation site, not readings from the displayed day.',
       introWaiting:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. The first full UTC day is being collected.',
       introSealed:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. This is the sealed record of one day.',
@@ -31,7 +31,7 @@
       noSnapshot:'Публичного снимка пока нет', published:'Опубликовано', day:'СУТКИ', state:'СОСТОЯНИЕ', collecting:'СБОР', sealed:'ЗАКРЫТО', record:'ЗАПИСЬ', daily:'ЗАПИСЬ СУТОК', first:'ПЕРВЫЕ СУТКИ UTC',
       period:'ПЕРИОД', next:'СЛЕДУЮЩАЯ ФИКСАЦИЯ', quantum:'КВАНТОВЫЕ ПУЛЬСЫ', firstDay:'Первые полные сутки', nextNote:'UTC, после новых суток', quantumNote:'Два квантовых маяка',
       today:'Сегодня идёт сбор по UTC. Счётчики предварительные.', shown:'Измерения за закрытые сутки UTC. Пропуски видны в итоговой записи.',
-      empty:'Записи появятся после первых полных суток UTC.', count:'ПОКАЗАНО ДНЕЙ', last30:'ПОСЛЕДНИЕ 30 ДНЕЙ',
+      empty:'Записи появятся после первых полных суток UTC.', count:'ПОКАЗАНО ЗАПИСЕЙ', last30:'ПОСЛЕДНИЕ ЗАПИСИ',
       photos:'Фотографии показывают приборы и место наблюдения, а не измерения за показанные сутки.',
       introWaiting:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Сейчас идёт сбор первых полных суток UTC.',
       introSealed:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Перед вами зафиксированная запись одного дня.',
@@ -48,7 +48,7 @@
       noSnapshot:'尚无公开快照', published:'发布时间', day:'日期', state:'状态', collecting:'采集中', sealed:'已封存', record:'记录', daily:'每日记录', first:'首个 UTC 日期',
       period:'周期', next:'下次封存', quantum:'量子脉冲', firstDay:'首个完整日期', nextNote:'UTC，下一日结束后', quantumNote:'两个量子信标',
       today:'正在采集今天的 UTC 数据，计数尚未确定。', shown:'已封存 UTC 日期的测量值。缺失项会保留在记录中。',
-      empty:'首个完整 UTC 日期结束后，记录将显示在这里。', count:'显示天数', last30:'最近 30 天',
+      empty:'首个完整 UTC 日期结束后，记录将显示在这里。', count:'显示记录数', last30:'最近记录',
       photos:'照片展示仪器和观测地点，并非当前日期的测量结果。',
       introWaiting:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。目前正在采集首个完整日期。',
       introSealed:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。这是某一天的封存记录。',
@@ -189,10 +189,12 @@
     $('rail-status').style.whiteSpace = 'pre-line';
     put('day-kicker', isInitial ? `${word.initial} / ${shownDay}` : current ? `${word.daily} / ${shownDay}` : `${word.first} / ${shownDay}`);
     put('page-intro', isInitial ? word.initialIntro : current ? word.introSealed : word.introWaiting);
+    document.querySelector('.instrument').setAttribute('aria-label', isInitial ? word.initial : word.daily);
     put('instrument-label', isInitial ? word.initialInstrument : word.dailyInstrument);
     put('lock-status', isInitial ? `${word.initialLock} · ${utcStamp(initial.created_at)}` : current ? `${word.sealed} · ${utcStamp(current.created_at)}` : word.waitingSeal);
     put('display-day', `${shownDay} · UTC`);
     renderNumber(record?.coefficient);
+    if (isInitial) $('meter').setAttribute('aria-label', `${word.initial} ${record.coefficient}`);
     put('number-note', isInitial ? word.initialNumber : word.dailyNumber);
     put('quality', isInitial ? word.initialState : current ? current.quality === 'good' ? word.good : current.quality === 'partial' ? word.partial : word.noQuantum : word.collecting);
     renderHash(record?.digest);
