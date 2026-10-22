@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+"""Reject commits that expose a personal identity or use the wrong author."""
+
+import subprocess
+import sys
+
+
+IDENTITY = "AntonKreighoff <346522204+AntonKreighoff@users.noreply.github.com> "
+PRIVATE_MARKERS = (
+    "andrew" + "sheff",
+    "andrew" + "shevtsov",
+    "andrei" + ".shevtsov",
+    "andrew" + ".sheffff2012",
+    "Анд" + "рей",
+    "Шев" + "цов",
+)
+
+
+def git(*args: str) -> bytes:
+    return subprocess.check_output(("git", *args))
+
+
+for kind in ("AUTHOR", "COMMITTER"):
+    ident = git("var", f"GIT_{kind}_IDENT").decode()
+    if not ident.startswith(IDENTITY):
+        sys.exit(f"Blocked: Git {kind.lower()} must use the project identity")
+    if not ident.rstrip().endswith(" +0000"):
+        sys.exit("Blocked: use UTC for commits (TZ=UTC git commit ...)")
+
+paths = git("diff", "--cached", "--name-only", "-z", "--diff-filter=ACMRT").split(b"\0")
+for raw_path in filter(None, paths):
+    path = raw_path.decode("utf-8", "surrogateescape")
+    content = git("show", f":{path}").decode("utf-8", "ignore").casefold()
+    if any(marker.casefold() in content for marker in PRIVATE_MARKERS):
+        sys.exit(f"Blocked: private identity found in staged file {path}")

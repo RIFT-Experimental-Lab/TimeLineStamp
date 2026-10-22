@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b0d">
+  <title>Timelinestamp</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">T<span>.</span></span><div><strong>TIMELINESTAMP</strong><small>PHYSICAL EVENT FINGERPRINT</small></div></div>
+      <div class="live offline"><span class="live-dot"></span><span id="live-label">ОЖИДАНИЕ ДАННЫХ</span></div>
+    </header>
+
+    <section class="hero" aria-labelledby="meter-title">
+      <div class="hero-top"><span>DAILY COEFFICIENT</span><span id="day-label">—</span></div>
+      <div class="meter" id="meter" aria-live="polite" aria-label="Коэффициент">—</div>
+      <div class="hero-bottom"><span id="meter-note">Ожидание первого полного периода измерений</span><span id="quality">—</span></div>
+      <div class="grid-overlay" aria-hidden="true"></div>
+    </section>
+
+    <div class="summary">
+      <div><span class="eyebrow">ПЕРИОД ИЗМЕРЕНИЙ</span><strong id="period">—</strong></div>
+      <div><span class="eyebrow">СЛЕДУЮЩАЯ ФИКСАЦИЯ</span><strong id="next-lock">—</strong></div>
+      <div><span class="eyebrow">ПОЛНЫЙ SHA-256</span><strong id="digest-short">—</strong></div>
+    </div>
+
+    <section class="panel">
+      <div class="section-heading"><div><span class="eyebrow">01 / INPUT STREAMS</span><h2>Источники</h2></div><span id="last-published" class="subtle">Публикация ожидается</span></div>
+      <div id="sources" class="source-grid"></div>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="section-heading"><div><span class="eyebrow">02 / IMMUTABLE RECORDS</span><h2>История</h2></div><span class="subtle">UTC</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Сутки</th><th>Коэффициент</th><th>Качество</th><th>SHA-256</th></tr></thead><tbody id="history"><tr><td colspan="4" class="empty">Записи появятся после первых полных суток.</td></tr></tbody></table></div>
+    </section>
+
+    <footer><span>ONE VALUE PER DAY · UTC</span><span>Суточный отпечаток физических измерений.</span><a href="mailto:rift.research@outlook.com">rift.research@outlook.com</a></footer>
+  </main>
+</body>
+</html>

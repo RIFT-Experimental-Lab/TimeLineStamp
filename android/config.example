@@ -1,0 +1,6 @@
+# Saved as ~/.config/timelinestamp/config by install-termux.sh.
+# The repository can be left empty until GitHub Pages is ready.
+TIMELINESTAMP_REPO=""
+TIMELINESTAMP_PROJECT_DIR="$HOME/TimeLineStamp"
+TIMELINESTAMP_TOKEN_FILE="$HOME/.config/timelinestamp/github-token"
+TIMELINESTAMP_BACKUP_DIR="$HOME/storage/shared/TimeLineStamp-backups"

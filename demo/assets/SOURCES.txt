@@ -1,0 +1,15 @@
+Photographs embedded into TimeLineStamp-demo.html by demo/build.py.
+
+nist-quantum-lab.jpg
+  Source: https://www.nist.gov/image/18pml020shalm-random-numbers-lab-shot-2mbjpg
+  Credit: Shalm/NIST. Quantum optics experiment, illustrative; not the NIST Beacon hardware.
+
+dscovr-cleanroom.jpg
+  Source: https://commons.wikimedia.org/wiki/File:DSCOVR_spacecraft_in_GSFC_clean_room.jpg
+  Credit: NASA/Goddard/Bill Hrybyk. Public domain (NASA government work).
+
+dscovr-earth.jpg
+  Source: https://science.nasa.gov/earth/earth-observatory/an-epic-new-view-of-earth-86257/
+  Credit: NASA. DSCOVR/EPIC image from 2015-07-06. Public domain.
+
+All three files are resized copies for the offline demonstration page.

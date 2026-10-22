@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Audit the active GitHub account and all outgoing commit identities."""
+
+import subprocess
+import sys
+
+
+EXPECTED_LOGIN = "AntonKreighoff"
+EXPECTED_EMAIL = "346522204+AntonKreighoff@users.noreply.github.com"
+ZERO = "0" * 40
+PRIVATE_MARKERS = (
+    "andrew" + "sheff",
+    "andrew" + "shevtsov",
+    "andrei" + ".shevtsov",
+    "andrew" + ".sheffff2012",
+    "Анд" + "рей",
+    "Шев" + "цов",
+)
+
+
+def run(*args: str) -> str:
+    return subprocess.check_output(args, text=True).strip()
+
+
+try:
+    active = run("gh", "api", "user", "--jq", ".login")
+except (OSError, subprocess.CalledProcessError):
+    sys.exit("Blocked: cannot verify the active GitHub account")
+if active != EXPECTED_LOGIN:
+    sys.exit("Blocked: wrong GitHub account is active")
+
+for line in sys.stdin:
+    _local_ref, new, _remote_ref, old = line.split()
+    if new == ZERO:
+        continue
+    revision = new if old == ZERO else f"{old}..{new}"
+    for commit in run("git", "rev-list", revision).splitlines():
+        fields = run("git", "show", "-s", "--format=%an%n%ae%n%cn%n%ce", commit).splitlines()
+        if fields != [EXPECTED_LOGIN, EXPECTED_EMAIL, EXPECTED_LOGIN, EXPECTED_EMAIL]:
+            sys.exit(f"Blocked: commit {commit[:12]} has an unexpected author or committer")
+        dates = run("git", "show", "-s", "--format=%aI%n%cI", commit).splitlines()
+        if any(not date.endswith(("+00:00", "Z")) for date in dates):
+            sys.exit(f"Blocked: commit {commit[:12]} has a non-UTC timestamp")
+        message = run("git", "show", "-s", "--format=%B", commit).casefold()
+        if any(marker.casefold() in message for marker in PRIVATE_MARKERS):
+            sys.exit(f"Blocked: commit {commit[:12]} mentions a private identity")
+        changes = run("git", "show", "--format=", "--no-ext-diff", "--binary", commit).casefold()
+        if any(marker.casefold() in changes for marker in PRIVATE_MARKERS):
+            sys.exit(f"Blocked: commit {commit[:12]} contains a private identity")
