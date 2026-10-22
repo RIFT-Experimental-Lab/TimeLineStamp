@@ -78,6 +78,10 @@ def main() -> None:
         x = 2 + index * 4
         bars.append(f'<line x1="{x}" y1="{43 - height:.1f}" x2="{x}" y2="43"/>')
     template = (ROOT / "v4-template.html").read_text(encoding="utf-8")
+    preview_redirect = '  <meta http-equiv="refresh" content="0; url=../../local/TimeLineStamp-demo.html">\n'
+    if template.count(preview_redirect) != 1:
+        raise ValueError("The source template must redirect direct browser visits to the built demo")
+    template = template.replace(preview_redirect, "", 1)
     translations = json.loads((ROOT / "translations.json").read_text(encoding="utf-8"))
     reverse: dict[str, dict[str, str]] = {}
     for source, (english, chinese) in translations.items():
