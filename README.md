@@ -1,77 +1,66 @@
 # TimeLineStamp
 
-**Эксперимент по поиску признаков смены временной линии.**
+**A daily fingerprint of physical events.** TimeLineStamp records public measurements from two quantum randomness beacons and two solar wind streams. At the end of each UTC day, it turns that record into a SHA-256 fingerprint and a short number that a person can remember.
 
-Если кто-то вмешается в прошлое, история событий может сложиться иначе. Тогда и результаты физических измерений за одни и те же сутки могут оказаться другими. TimeLineStamp фиксирует измерения, превращает запись суток в полный цифровой отпечаток и выводит из него короткое число, которое удобно запомнить.
+**[Open the live TimeLineStamp page](https://rift-experimental-lab.github.io/TimeLineStamp/)** · [Public status data](https://rift-experimental-lab.github.io/TimeLineStamp/data/status.json)
 
-Цель эксперимента — обнаружить возможную смену временной линии. Если наблюдатель помнит одно число за уже зафиксированные сутки UTC, а страница показывает другое, мы будем считать, что линия сменилась. По гипотезе проекта это указывало бы на создание машины времени. Расхождение не сообщает, **когда именно** произошла возможная смена, и прежде всего требует проверки даты, качества данных, работы источников и публикации.
+## The experiment
 
-## Как это работает
+Imagine that an intervention in the past changes the course of a day. Some physical measurements made during that day might then have different outcomes. TimeLineStamp gives each completed day one number to compare with memory.
 
-1. В течение суток UTC программа выбирает по одному пульсу каждые пять минут из двух независимых квантовых маяков — NIST и NQSN. Дополнительно она собирает минутные измерения магнитного поля и плазмы солнечного ветра NOAA.
-2. В `00:15 UTC` следующего дня программа закрывает запись за прошедшие сутки. Пропущенные пульсы остаются явными пропусками. После фиксации запись не пересчитывается.
-3. Из канонической записи вычисляется `SHA-256`, а из него — коэффициент вида `1.xxxxxx`. Коэффициент служит короткой меткой для памяти; полный хеш позволяет различать записи точнее.
-4. Наблюдатель запоминает коэффициент и дату UTC. Позже он сравнивает воспоминание с записью **за ту же дату**. О расхождении можно сообщить на [rift.research@outlook.com](mailto:rift.research@outlook.com), указав дату, запомненное число и число на странице сейчас.
+If you remember a different number **for the same UTC date** than the one shown now, write to [rift.research@outlook.com](mailto:rift.research@outlook.com). Include the date, the number you remember, and the number currently on the page. The report can rest on memory alone; the experiment looks for precisely that kind of discrepancy. A daily difference cannot reveal when a possible change occurred.
 
-Сообщение наблюдателя может опираться только на память. Оно запускает проверку расхождения, а не устанавливает его причину автоматически. Точное время возможной смены линии из суточного числа определить нельзя.
+The [public page](https://rift-experimental-lab.github.io/TimeLineStamp/) explains the timeline model, the choice of measurements, the calculation, and each source in English, Russian, and Chinese. English is the default language.
 
-## Устройство системы
+## How a daily record is made
 
-Автономный сервер непрерывно получает измерения из открытых источников, хранит исходные ответы в SQLite и раз в сутки фиксирует итоговую запись. Первая запись появляется после первых полных суток сбора. Старые измерения и зафиксированные дни не удаляются при обычной работе.
+1. Every five minutes, the collector selects one pulse from each of the [NIST Randomness Beacon](https://csrc.nist.gov/Projects/interoperable-randomness-beacons/beacon-20) and the [NQSN Beacon](https://quantum-entropy.sg/api/beacon/). It also collects one-minute magnetic field and plasma measurements from [NOAA SWPC](https://www.swpc.noaa.gov/products/real-time-solar-wind).
+2. The server stores accepted measurements, raw source entries, and HTTP response hashes in SQLite. Missing beacon slots remain explicit gaps; old periods are not silently filled later.
+3. At **00:15 UTC** on the following day, it seals the previous UTC day's record. The first seal follows the first *full* day of collection. A sealed day is not recalculated during normal operation.
+4. The canonical daily manifest is hashed with SHA-256. A deterministic, unbiased mapping turns the digest into a coefficient of the form `1.xxxxxx`. The coefficient is a short memory aid; the full SHA-256 digest identifies the record more precisely.
 
-При включённой публикации сервер отправляет в GitHub Pages компактный JSON-снимок: текущую запись, историю за 30 дней, счётчики источников и время публикации. Исходные ответы и база SQLite остаются на сервере. Канонический манифест для пересчёта полного хеша доступен через локальный API; публичный снимок его не содержит.
+Version 1 expects 288 pulses per beacon and up to 1,440 one-minute entries per NOAA stream per day. It marks substantial gaps as incomplete. If both quantum streams are entirely absent, it keeps the hash but does not issue a coefficient. The calculation is implemented in `Store.finalize_day` in [timelinestamp.py](timelinestamp.py).
 
-Статический трёхъязычный сайт расположен в `docs/` и читает `docs/data/status.json`; до первой суточной записи он показывает ожидание. Папка `demo/` содержит исходный макет с демонстрационными показаниями. Команда `python3 demo/build_public.py` собирает локальное демо и обновляет рабочую страницу `docs/index.html`. Порядок публикации описан в `GITHUB_PAGES.md`.
+## What the public page shows
 
-## Запуск автономного сервера
+The site in [`docs/`](docs/) is static. When publication is enabled, the server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, current collection counts, and the publication time. The page shows a waiting state until a daily record exists and marks delayed updates.
 
-Нужен Python 3.9 или новее. Сторонние Python-пакеты для сборщика не требуются. Команды выполняются из корня репозитория.
+Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The browser never connects directly to the server.
 
-Сбор без локального веб-сервера:
+The design source and fictional demonstration data live in [`demo/`](demo/). To rebuild both the offline demo and the public HTML after a design change, run:
 
 ```sh
+python3 demo/build_public.py
+```
+
+Deployment details are in [GITHUB_PAGES.md](GITHUB_PAGES.md). The unattended Android setup is in [ANDROID.md](ANDROID.md).
+
+## Run the collector locally
+
+Python 3.9 or newer is required. The collector uses the Python standard library and needs internet access to reach the sources. Run these commands from the repository root.
+
+```sh
+# Collect without a local web interface.
 python3 timelinestamp.py --headless
-```
 
-Если нужен локальный интерфейс и API, запустите `python3 timelinestamp.py` и откройте `http://127.0.0.1:8765` на самом сервере. По умолчанию интерфейс не доступен из сети. Путь к базе задаётся флагом `--db`; по умолчанию используется `../local/data/timelinestamp.sqlite3`, когда рядом с репозиторием есть папка `local/`, иначе `data/timelinestamp.sqlite3`.
-
-Для публикации статуса укажите репозиторий и путь к файлу токена:
-
-```sh
-python3 timelinestamp.py --headless --publish-repo OWNER/REPO --token-file /path/to/github-token
-```
-
-Токен хранится на сервере вне репозитория с правами `0600` и доступом на запись содержимого только этого репозитория. Публикатор обновляет `docs/data/status.json` через GitHub Contents API. Для GitHub Pages используется ветка `main` и папка `/docs`.
-
-Проверка состояния и опциональные параметры:
-
-```sh
+# Inspect the current database and collection progress.
 python3 timelinestamp.py --status
-python3 timelinestamp.py --headless --backup-dir /path/to/backups --log-file /path/to/collector.log
 ```
 
-`--backup-dir` включает две сменяемые сжатые копии полной базы; `--log-file` ограничивает размер журнала. Для разового теста источников без записи в суточную базу запустите `python3 test_now.py`: он выводит тестовый коэффициент, который не заменяет суточное показание.
+To enable the local web interface and API, run `python3 timelinestamp.py` and open `http://127.0.0.1:8765` **on the same device**. It binds to the loopback address by default. The database path can be changed with `--db`; the default is `../local/data/timelinestamp.sqlite3` when a sibling `local/` directory exists, or `data/timelinestamp.sqlite3` otherwise.
 
-## Правило расчёта v1
+For a one-off source check, run `python3 test_now.py` or `./test_now.command` on macOS. It prints a **test snapshot**, not a sealed daily coefficient.
 
-- Период — календарные сутки UTC: `00:00:00`–`23:59:59`.
-- От NIST и NQSN ожидается по 288 пульсов: один на каждые пять минут. Неудачный запрос повторяется до десяти минут; старые периоды задним числом не заполняются.
-- NOAA даёт минутные ряды магнитного поля и плазмы — до 1&nbsp;440 записей на поток за сутки. Принимаются активные строки с общим флагом качества `0` и числовыми измерениями.
-- Каноническая запись содержит фиксированный порядок источников и явные `null` для пропущенных слотов маяков. Её состав определён в `Store.finalize_day`.
-- Коэффициент детерминированно выводится из `SHA-256` с устранением смещения при переводе в миллион вариантов. Если за сутки нет ни одного квантового пульса, хеш сохраняется, но коэффициент не выдаётся. Существенные пропуски отмечаются как неполные данные.
+Optional `--backup-dir` and `--log-file` arguments enable two rotating compressed database backups and a size-limited log. To publish the status snapshot, supply `--publish-repo RIFT-Experimental-Lab/TimeLineStamp` and `--token-file /path/to/github-token`. Keep the token outside the repository with file mode `0600`.
 
-Программа хранит исходные ответы, время получения и хеш HTTP-ответа в SQLite. Правило v1 проверяет время, индекс и статус пульса; криптографическая проверка подписей маяков в него не входит. Изменение формата источника требует новой версии правила расчёта; уже зафиксированные дни не пересчитываются.
+### Local API
 
-## Локальный API
+- `/api/status` — latest record, recent history, and current collection progress.
+- `/api/day/YYYY-MM-DD` — digest, coefficient, quality, and source counts for one day.
+- `/api/day/YYYY-MM-DD/manifest` — the canonical inputs used to calculate that day's digest.
 
-- `/api/status` — текущая запись, последние 30 дней и ход сегодняшнего сбора.
-- `/api/day/YYYY-MM-DD` — полный хеш, коэффициент, качество и счётчики за день.
-- `/api/day/YYYY-MM-DD/manifest` — канонические входные данные, из которых можно пересчитать хеш.
+## Source handling
 
-## Источники данных
+Beacon pulses are checked for their expected timestamp, the presence of indices, and normal status. NOAA rows are accepted only when active, with overall quality flag `0` and numeric values. Version 1 does not cryptographically verify beacon signatures. If a source format changes, the calculation rules need a new version; previously sealed records remain as they were.
 
-- [NIST Randomness Beacon](https://csrc.nist.gov/Projects/interoperable-randomness-beacons/beacon-20)
-- [NQSN Beacon](https://quantum-entropy.sg/api/beacon/)
-- [NOAA SWPC Real-Time Solar Wind](https://www.swpc.noaa.gov/products/real-time-solar-wind)
-
-Потоки принадлежат их операторам. TimeLineStamp собирает опубликованные измерения и не управляет источниками.
+The measurements belong to their respective operators. TimeLineStamp records their published outputs and does not control the sources.
