@@ -32,11 +32,14 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 def public_status(store: Store, now: datetime) -> dict:
+    v2 = store.v2_settings()
     return {
         "format": "timelinestamp-status-v1",
         "published_at": iso(now),
         "first_full_day": store.first_full_day(),
-        "v2_start_day_utc": store.v2_settings()["start_day_utc"],
+        "v2_start_day_utc": v2["start_day_utc"],
+        "v2_shadow_start_day_utc": v2["shadow_start_day_utc"],
+        "v2_enabled_source_count": len(v2["enabled"]),
         "current": store.latest_day(),
         "history": store.history(30),
         "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},

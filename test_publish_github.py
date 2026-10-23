@@ -29,6 +29,20 @@ class PublishingTests(unittest.TestCase):
             self.assertNotIn(b"example.test", encoded)
             self.assertNotIn(b"progress", encoded)
 
+    def test_shadow_source_count_is_public_without_raw_observations(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder) / "v2.json"
+            config.write_text(json.dumps({"shadow_start_day_utc": "2026-10-23",
+                                          "start_day_utc": None,
+                                          "disabled_groups": ["ndbc", "usgs", "ea", "osm"],
+                                          "disabled_sources": []}), encoding="utf-8")
+            store = Store(Path(folder) / "test.sqlite3", config)
+            status = public_status(store, datetime(2026, 10, 23, tzinfo=timezone.utc))
+            self.assertEqual(status["v2_shadow_start_day_utc"], "2026-10-23")
+            self.assertIsNone(status["v2_start_day_utc"])
+            self.assertEqual(status["v2_enabled_source_count"], 23)
+            self.assertNotIn("progress", status)
+
     def test_github_update_uses_existing_sha_and_private_token_file(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

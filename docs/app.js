@@ -19,6 +19,7 @@
       introWaiting:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. The first full UTC day is being collected.',
       introSealed:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. This is the sealed record of one day.',
       introSealedV2:'This sealed record combines quantum pulses, solar wind, and additional fixed measurements and activity traces from multiple locations.',
+      shadowNote:'An expanded set of {count} fixed streams and areas is being collected in shadow mode. These inputs do not affect the number shown for this day.',
       extraInputs:'ADDITIONAL INPUTS', fixedSeries:'FIXED SERIES',
       coefficient:'Coefficient', noCoefficient:'No sealed daily coefficient yet', waitingSeal:'AWAITING FIRST DAILY SEAL',
       mailSubject:'TimeLineStamp — discrepancy', mailDay:'UTC date', mailRemembered:'Number I remember', mailShown:'Number shown now', mailWhen:'When I noticed the difference',
@@ -38,6 +39,7 @@
       introWaiting:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Сейчас идёт сбор первых полных суток UTC.',
       introSealed:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Перед вами зафиксированная запись одного дня.',
       introSealedV2:'Эта запись объединяет квантовые пульсы, солнечный ветер и дополнительные фиксированные измерения и следы активности из разных мест.',
+      shadowNote:'Параллельно в теневом режиме собираются данные из {count} закреплённых рядов и областей. Они пока не влияют на показанное число за сутки.',
       extraInputs:'ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ', fixedSeries:'ЗАКРЕПЛЁННЫХ РЯДОВ',
       coefficient:'Коэффициент', noCoefficient:'Суточный коэффициент ещё не зафиксирован', waitingSeal:'ОЖИДАНИЕ ПЕРВОЙ СУТОЧНОЙ ФИКСАЦИИ',
       mailSubject:'TimeLineStamp — расхождение', mailDay:'Дата UTC', mailRemembered:'Число, которое я помню', mailShown:'Число на странице сейчас', mailWhen:'Когда заметил расхождение',
@@ -57,6 +59,7 @@
       introWaiting:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。目前正在采集首个完整日期。',
       introSealed:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。这是某一天的封存记录。',
       introSealedV2:'这份封存记录结合了量子脉冲、太阳风，以及来自多个地点的固定测量和活动记录。',
+      shadowNote:'另有 {count} 个固定数据序列和区域正在影子模式下采集；这些数据目前不影响页面显示的每日数字。',
       extraInputs:'其他输入', fixedSeries:'固定数据序列',
       coefficient:'系数', noCoefficient:'尚无已封存的每日系数', waitingSeal:'等待首次每日封存',
       mailSubject:'TimeLineStamp — 读数差异', mailDay:'UTC 日期', mailRemembered:'我记得的数字', mailShown:'页面当前显示的数字', mailWhen:'发现差异的时间',
@@ -122,7 +125,11 @@
   function renderStreams(data, record, isInitial) {
     const container = $('streams');
     container.replaceChildren();
-    put('streams-description', isInitial ? t().initialStreams : record ? t().shown : t().today);
+    const base = isInitial ? t().initialStreams : record ? t().shown : t().today;
+    const hasExtraInputs = Object.keys(record?.counts || {}).some(key => !sources.some(([source]) => source === key));
+    const shadowCount = Number(data.v2_enabled_source_count);
+    const shadow = data.v2_shadow_start_day_utc && !hasExtraInputs && Number.isInteger(shadowCount) && shadowCount > 0;
+    put('streams-description', base + (shadow ? ` ${t().shadowNote.replace('{count}', shadowCount)}` : ''));
     sources.forEach(([key, name, expected, subtitle], index) => {
       const raw = record?.counts?.[key]?.received;
       const count = Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 0;
