@@ -18,6 +18,8 @@
       photos:'Photographs show instruments and the observation site, not readings from the displayed day.',
       introWaiting:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. The first full UTC day is being collected.',
       introSealed:'Each day leaves a digital trace: two streams of quantum pulses and two streams of solar wind measurements. This is the sealed record of one day.',
+      introSealedV2:'This sealed record combines quantum pulses, solar wind, and additional fixed measurements and activity traces from multiple locations.',
+      extraInputs:'ADDITIONAL INPUTS', fixedSeries:'FIXED SERIES',
       coefficient:'Coefficient', noCoefficient:'No sealed daily coefficient yet', waitingSeal:'AWAITING FIRST DAILY SEAL',
       mailSubject:'TimeLineStamp — discrepancy', mailDay:'UTC date', mailRemembered:'Number I remember', mailShown:'Number shown now', mailWhen:'When I noticed the difference',
       good:'● COMPLETE DATA', partial:'● INCOMPLETE DATA', noQuantum:'● QUANTUM DATA UNAVAILABLE',
@@ -35,6 +37,8 @@
       photos:'Фотографии показывают приборы и место наблюдения, а не измерения за показанные сутки.',
       introWaiting:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Сейчас идёт сбор первых полных суток UTC.',
       introSealed:'Каждые сутки оставляют цифровой след: два потока квантовых пульсов и два потока измерений солнечного ветра. Перед вами зафиксированная запись одного дня.',
+      introSealedV2:'Эта запись объединяет квантовые пульсы, солнечный ветер и дополнительные фиксированные измерения и следы активности из разных мест.',
+      extraInputs:'ДОПОЛНИТЕЛЬНЫЕ ДАННЫЕ', fixedSeries:'ЗАКРЕПЛЁННЫХ РЯДОВ',
       coefficient:'Коэффициент', noCoefficient:'Суточный коэффициент ещё не зафиксирован', waitingSeal:'ОЖИДАНИЕ ПЕРВОЙ СУТОЧНОЙ ФИКСАЦИИ',
       mailSubject:'TimeLineStamp — расхождение', mailDay:'Дата UTC', mailRemembered:'Число, которое я помню', mailShown:'Число на странице сейчас', mailWhen:'Когда заметил расхождение',
       good:'● ПОЛНЫЕ ДАННЫЕ', partial:'● НЕПОЛНЫЕ ДАННЫЕ', noQuantum:'● НЕТ КВАНТОВЫХ ДАННЫХ',
@@ -52,6 +56,8 @@
       photos:'照片展示仪器和观测地点，并非当前日期的测量结果。',
       introWaiting:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。目前正在采集首个完整日期。',
       introSealed:'每个 UTC 日期都会留下数字痕迹：两路量子脉冲和两路太阳风测量。这是某一天的封存记录。',
+      introSealedV2:'这份封存记录结合了量子脉冲、太阳风，以及来自多个地点的固定测量和活动记录。',
+      extraInputs:'其他输入', fixedSeries:'固定数据序列',
       coefficient:'系数', noCoefficient:'尚无已封存的每日系数', waitingSeal:'等待首次每日封存',
       mailSubject:'TimeLineStamp — 读数差异', mailDay:'UTC 日期', mailRemembered:'我记得的数字', mailShown:'页面当前显示的数字', mailWhen:'发现差异的时间',
       good:'● 数据完整', partial:'● 数据不完整', noQuantum:'● 量子数据不可用',
@@ -131,6 +137,20 @@
       bar.style.setProperty('--fill', `${percent.toFixed(1)}%`);
       add(bar, 'i', ''); add(bar, 'small', `${percent.toFixed(1)}%`);
     });
+    const extras = Object.entries(record?.counts || {}).filter(([key]) => !sources.some(([source]) => source === key));
+    if (extras.length) {
+      const received = extras.reduce((sum, [, value]) => sum + (Number(value?.received) || 0), 0);
+      const expected = extras.reduce((sum, [, value]) => sum + (Number(value?.expected) || 0), 0);
+      const row = add(container, 'div', '', 'stream');
+      add(row, 'span', '05+', 'stream-no');
+      const label = add(row, 'div', '', 'stream-name');
+      add(label, 'strong', t().extraInputs); add(label, 'small', `${extras.length} ${t().fixedSeries}`);
+      add(row, 'span', `${received.toLocaleString(lang())} / ${expected.toLocaleString(lang())}`, 'stream-count');
+      const bar = add(row, 'div', '', 'stream-bar');
+      const percent = expected ? Math.min(100, 100*received/expected) : 0;
+      bar.style.setProperty('--fill', `${percent.toFixed(1)}%`);
+      add(bar, 'i', ''); add(bar, 'small', `${percent.toFixed(1)}%`);
+    }
   }
   function renderArchive(history, initialRecord) {
     const body = $('history');
@@ -176,7 +196,13 @@
     const word = t();
     const published = data.published_at ? new Date(data.published_at) : null;
     const valid = published && Number.isFinite(published.getTime());
-    const due = current ? sealDue(current.day, 2) : sealDue(data.first_full_day, 1);
+    const nextDay = current && /^\d{4}-\d{2}-\d{2}$/.test(current.day) ?
+      new Date(`${current.day}T00:00:00Z`) : null;
+    if (nextDay) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const nextDayText = nextDay ? nextDay.toISOString().slice(0, 10) : data.first_full_day;
+    const nextIsV2 = !!data.v2_start_day_utc && nextDayText >= data.v2_start_day_utc;
+    const due = current ? sealDue(current.day, nextIsV2 ? 4 : 2) :
+      sealDue(data.first_full_day, nextIsV2 ? 3 : 1);
     const stale = valid && due && Date.now() - due.getTime() > 3*3600_000;
     put('live-label', failed ? word.unavailable : !valid ? snapshot ? word.waiting : word.connecting : stale ? word.delayed : current ? word.updated : isInitial ? word.initialUpdated : word.waiting);
     put('last-published', valid ? `${word.published}: ${utcStamp(data.published_at)}` : word.noSnapshot);
@@ -186,7 +212,8 @@
     put('rail-status', `${word.day}: ${shownDay}\nUTC\n${word.state}: ${isInitial ? word.initialState : current ? word.sealed : word.collecting}`);
     $('rail-status').style.whiteSpace = 'pre-line';
     put('day-kicker', isInitial ? `${word.initial} / ${shownDay}` : current ? `${word.daily} / ${shownDay}` : `${word.first} / ${shownDay}`);
-    put('page-intro', isInitial ? word.initialIntro : current ? word.introSealed : word.introWaiting);
+    const hasExtraInputs = current && Object.keys(current.counts || {}).some(key => !sources.some(([source]) => source === key));
+    put('page-intro', isInitial ? word.initialIntro : current ? hasExtraInputs ? word.introSealedV2 : word.introSealed : word.introWaiting);
     document.querySelector('.instrument').setAttribute('aria-label', isInitial ? word.initial : word.daily);
     put('instrument-label', isInitial ? word.initialInstrument : word.dailyInstrument);
     put('lock-status', isInitial ? `${word.initialLock} · ${utcStamp(initial.created_at)}` : current ? `${word.sealed} · ${utcStamp(current.created_at)}` : word.waitingSeal);

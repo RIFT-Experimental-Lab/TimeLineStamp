@@ -19,7 +19,7 @@ from pathlib import Path
 if sys.version_info < (3, 9):
     raise SystemExit("Python 3.9 or newer is required")
 root = Path(sys.argv[1])
-for name in ("timelinestamp.py", "test_now.py", "backup_store.py", "publish_github.py", "android/ssh-watchdog.py"):
+for name in ("timelinestamp.py", "test_now.py", "backup_store.py", "publish_github.py", "v2_sources.py", "probe_v2_sources.py", "v2_toggle.py", "android/ssh-watchdog.py"):
     ast.parse((root / name).read_text(encoding="utf-8"), filename=name)
 PY
 config_dir="$HOME/.config/timelinestamp"
@@ -28,6 +28,10 @@ mkdir -p "$config_dir" "$boot_dir" "$HOME/.local/state/timelinestamp"
 if [ ! -e "$config_dir/config" ]; then
     cp "$project_dir/android/config.example" "$config_dir/config"
     chmod 600 "$config_dir/config"
+fi
+if [ ! -e "$config_dir/v2-sources.json" ]; then
+    cp "$project_dir/v2_sources.json" "$config_dir/v2-sources.json"
+    chmod 600 "$config_dir/v2-sources.json"
 fi
 cp "$project_dir/android/termux-boot.sh" "$boot_dir/90-timelinestamp"
 chmod 700 "$boot_dir/90-timelinestamp"

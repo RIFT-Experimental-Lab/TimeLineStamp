@@ -31,7 +31,8 @@ while :; do
     if [ -f "$state_dir/launcher.log" ] && [ "$(wc -c < "$state_dir/launcher.log")" -gt 1000000 ]; then
         mv "$state_dir/launcher.log" "$state_dir/launcher.log.old"
     fi
-    set -- --headless --db "$project_dir/data/timelinestamp.sqlite3" --log-file "$state_dir/collector.log"
+    v2_config="${TIMELINESTAMP_V2_CONFIG:-$HOME/.config/timelinestamp/v2-sources.json}"
+    set -- --headless --db "$project_dir/data/timelinestamp.sqlite3" --v2-config "$v2_config" --log-file "$state_dir/collector.log"
     if [ -n "$backup_dir" ]; then
         set -- "$@" --backup-dir "$backup_dir"
     fi

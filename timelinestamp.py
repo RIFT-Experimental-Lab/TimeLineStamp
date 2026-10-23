@@ -18,6 +18,9 @@ from pathlib import Path
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
+from v2_sources import SOURCES as V2_SOURCES, SOURCE_BY_ID as V2_SOURCE_BY_ID
+from v2_sources import daily_samples as v2_daily_samples, live_sample as v2_live_sample
+
 
 ROOT = Path(__file__).resolve().parent
 LOCAL_DATA = ROOT.parent / "local" / "data" if ROOT.name == "repository" and (ROOT.parent / "local").is_dir() else ROOT / "data"
@@ -80,8 +83,9 @@ def fetch_json(url: str) -> tuple[object, str]:
 
 
 class Store:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, v2_config_path: Path | None = None):
         self.path = path
+        self.v2_config_path = v2_config_path or ROOT / "v2_sources.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
             db.executescript("""
@@ -126,6 +130,29 @@ class Store:
         started = self.started_at()
         return (started.date() + timedelta(days=1)).isoformat()
 
+    def v2_settings(self) -> dict:
+        path = self.v2_config_path
+        settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        start = settings.get("start_day_utc")
+        shadow = settings.get("shadow_start_day_utc")
+        if shadow is not None:
+            if not isinstance(shadow, str) or datetime.fromisoformat(shadow).date().isoformat() != shadow:
+                raise ValueError("v2 shadow_start_day_utc must be YYYY-MM-DD or null")
+        if start is not None:
+            if not isinstance(start, str) or datetime.fromisoformat(start).date().isoformat() != start:
+                raise ValueError("v2 start_day_utc must be YYYY-MM-DD or null")
+            if start < self.first_full_day():
+                raise ValueError("v2 start_day_utc precedes the first full collection day")
+        disabled_groups = set(settings.get("disabled_groups", []))
+        disabled_sources = set(settings.get("disabled_sources", []))
+        known_groups = {source.group for source in V2_SOURCES}
+        if disabled_groups - known_groups or disabled_sources - V2_SOURCE_BY_ID.keys():
+            raise ValueError("Unknown disabled v2 group or source")
+        enabled = [source for source in V2_SOURCES if source.group not in disabled_groups
+                   and source.id not in disabled_sources]
+        return {"start_day_utc": start, "shadow_start_day_utc": shadow, "enabled": enabled,
+                "disabled_groups": sorted(disabled_groups), "disabled_sources": sorted(disabled_sources)}
+
     def has_observation(self, source: str, event_time: str) -> bool:
         with self.connect() as db:
             return db.execute("SELECT 1 FROM observations WHERE source=? AND event_time=?", (source, event_time)).fetchone() is not None
@@ -143,9 +170,7 @@ class Store:
         with self.connect() as db:
             return db.execute("SELECT 1 FROM days WHERE day=?", (day,)).fetchone() is not None
 
-    def finalize_day(self, day: str) -> dict:
-        if self.day_exists(day):
-            return self.get_day(day)
+    def _v1_manifest(self, day: str) -> tuple[dict, dict]:
         start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
         end = start + timedelta(days=1)
         start_s, end_s = iso(start), iso(end)
@@ -154,6 +179,8 @@ class Store:
                 WHERE event_time>=? AND event_time<? ORDER BY source,event_time""", (start_s, end_s)).fetchall()
         by_source: dict[str, dict[str, object]] = {source: {} for source in SOURCE_NAMES}
         for row in rows:
+            if row["source"] not in by_source:
+                continue
             key = row["slot_time"] if row["source"] in BEACON_SOURCES else row["event_time"]
             by_source[row["source"]][key] = json.loads(row["payload"])
         manifest: dict = {"format": "timelinestamp-v1", "day_utc": day, "sources": {}}
@@ -170,12 +197,51 @@ class Store:
             values = [[key, value] for key, value in sorted(by_source[source].items())]
             manifest["sources"][source] = values
             counts[source] = {"received": len(values), "expected": 1440}
+        return manifest, counts
+
+    def finalize_day(self, day: str) -> dict:
+        if self.day_exists(day):
+            return self.get_day(day)
+        manifest, counts = self._v1_manifest(day)
+        settings = self.v2_settings()
+        v2_active = settings["start_day_utc"] is not None and day >= settings["start_day_utc"]
+        if v2_active:
+            start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
+            end = start + timedelta(days=1)
+            with self.connect() as db:
+                rows = db.execute("""SELECT source,event_time,payload FROM observations
+                    WHERE event_time>=? AND event_time<? ORDER BY source,event_time""",
+                    (iso(start), iso(end))).fetchall()
+            observed: dict[str, dict[str, object]] = {source.id: {} for source in settings["enabled"]}
+            for row in rows:
+                if row["source"] in observed:
+                    observed[row["source"]][row["event_time"]] = json.loads(row["payload"])
+            source_set = {"enabled": [source.id for source in settings["enabled"]],
+                          "disabled_groups": settings["disabled_groups"],
+                          "disabled_sources": settings["disabled_sources"]}
+            source_set["sha256"] = hashlib.sha256(canonical(source_set)).hexdigest()
+            manifest["format"] = "timelinestamp-v2"
+            manifest["source_set"] = source_set
+            for source in settings["enabled"]:
+                step = 1200 if source.cadence == "twenty" else 3600
+                values = [[iso(start + timedelta(seconds=offset)),
+                           observed[source.id].get(iso(start + timedelta(seconds=offset)))]
+                          for offset in range(0, 86400, step)]
+                manifest["sources"][source.id] = values
+                counts[source.id] = {"received": sum(value is not None for _, value in values),
+                                     "expected": len(values)}
         digest = hashlib.sha256(canonical(manifest)).hexdigest()
         quantum_count = counts["nist"]["received"] + counts["nqsn"]["received"]
         quality = "unavailable" if quantum_count == 0 else "good"
         if 0 < quantum_count and (min(counts[s]["received"] for s in BEACON_SOURCES) < 230 or
                                   min(counts[s]["received"] for s in NOAA_SOURCES) < 1000):
             quality = "partial"
+        if v2_active:
+            new_counts = [counts[source.id] for source in settings["enabled"]]
+            if not new_counts or not any(item["received"] for item in new_counts):
+                quality = "unavailable"
+            elif any(item["received"] < item["expected"] for item in new_counts) and quality == "good":
+                quality = "partial"
         coefficient = None if quality == "unavailable" else display_coefficient(digest)
         created = iso(utc_now())
         with self.connect() as db:
@@ -326,13 +392,14 @@ class Collector:
                 self.noaa_next = min(self.noaa_next, now.timestamp() + 300)
 
     def finalize_due_days(self, now: datetime) -> None:
-        if now.hour == 0 and now.minute < 15:
-            return
-        last_due = now.date() - timedelta(days=1)
+        v2_start = self.store.v2_settings()["start_day_utc"]
+        last_v1_due = now.date() - timedelta(days=1) if (now.hour, now.minute) >= (0, 15) else now.date() - timedelta(days=2)
+        last_v2_due = (now - timedelta(days=2, minutes=15)).date() - timedelta(days=1)
         first = datetime.fromisoformat(self.store.first_full_day()).date()
-        while first <= last_due:
+        while first <= max(last_v1_due, last_v2_due):
             day = first.isoformat()
-            if not self.store.day_exists(day):
+            due = last_v2_due if v2_start and day >= v2_start else last_v1_due
+            if first <= due and not self.store.day_exists(day):
                 self.store.finalize_day(day)
             first += timedelta(days=1)
 
@@ -354,6 +421,132 @@ class Collector:
             self.stop.wait(30)
 
 
+class V2LiveWorker:
+    """Keep non-recoverable OpenSky and OSM samples separate from slower fetches."""
+
+    def __init__(self, store: Store):
+        self.store = store
+        self.stop = threading.Event()
+        self.attempted: dict[tuple[str, str], float] = {}
+
+    def run(self) -> None:
+        while not self.stop.is_set():
+            now = utc_now()
+            try:
+                settings = self.store.v2_settings()
+                starts = [value for value in (settings["shadow_start_day_utc"], settings["start_day_utc"]) if value]
+                start = min(starts) if starts else None
+                if start and now.date().isoformat() >= start:
+                    for source in settings["enabled"]:
+                        if source.kind not in {"opensky", "osm"}:
+                            continue
+                        if source.kind == "opensky":
+                            minute = (now.minute // 20) * 20
+                            slot = now.replace(minute=minute, second=0, microsecond=0)
+                            age = (now - slot).total_seconds()
+                            if age < 120 or age > 900:
+                                continue
+                        else:
+                            slot = now.replace(minute=0, second=0, microsecond=0)
+                            if not 300 <= (now - slot).total_seconds() <= 1500:
+                                continue
+                        key = (source.id, iso(slot))
+                        if self.store.has_observation(*key):
+                            continue
+                        if source.kind == "opensky" and key in self.attempted:
+                            # Four zones x 72 slots = 288 of 400 anonymous daily credits.
+                            continue
+                        if source.kind == "osm" and now.timestamp() - self.attempted.get(key, 0) < 90:
+                            continue
+                        self.attempted[key] = now.timestamp()
+                        try:
+                            payload, receipt = v2_live_sample(source, slot)
+                            self.store.add_observation(source.id, iso(slot), iso(slot), payload, payload,
+                                                       receipt["sha256"], receipt["url"])
+                        except Exception as exc:
+                            LOG.warning("v2 live %s %s: %s", source.id, iso(slot), exc)
+                if len(self.attempted) > 500:
+                    self.attempted = {key: value for key, value in self.attempted.items()
+                                      if now.timestamp() - value < 7200}
+            except Exception:
+                LOG.exception("v2 live cycle failed")
+            self.stop.wait(30)
+
+
+class V2HistoricalWorker:
+    """Backfill fixed slots while providers still retain their original data."""
+
+    def __init__(self, store: Store):
+        self.store = store
+        self.stop = threading.Event()
+        self.attempted: dict[tuple[str, str], float] = {}
+
+    def _due_slots(self, source, day: str, now: datetime) -> list[datetime]:
+        start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
+        end = start + timedelta(days=1)
+        with self.store.connect() as db:
+            known = {row["event_time"] for row in db.execute(
+                "SELECT event_time FROM observations WHERE source=? AND event_time>=? AND event_time<?",
+                (source.id, iso(start), iso(end))).fetchall()}
+        return [slot for hour in range(24) if (slot := start + timedelta(hours=hour)) <= now - timedelta(minutes=30)
+                and iso(slot) not in known]
+
+    def run(self) -> None:
+        while not self.stop.is_set():
+            now = utc_now()
+            try:
+                settings = self.store.v2_settings()
+                starts = [value for value in (settings["shadow_start_day_utc"], settings["start_day_utc"]) if value]
+                start_day = min(starts) if starts else None
+                if start_day and now.date().isoformat() >= start_day:
+                    oldest = max(datetime.fromisoformat(start_day).date(), now.date() - timedelta(days=3))
+                    for source in settings["enabled"]:
+                        if self.stop.is_set():
+                            break
+                        if source.kind in {"opensky", "osm"}:
+                            continue
+                        response_cache: dict = {}
+                        for offset in range((now.date() - oldest).days + 1):
+                            day = (oldest + timedelta(days=offset)).isoformat()
+                            if self.store.day_exists(day) and settings["start_day_utc"] and day >= settings["start_day_utc"]:
+                                continue
+                            missing = self._due_slots(source, day, now)
+                            if not missing:
+                                continue
+                            if source.kind in {"geofon", "geonet", "intermagnet"}:
+                                ready = [slot for slot in missing if now.timestamp() - self.attempted.get((source.id, iso(slot)), 0) >= 1800]
+                                for slot in ready[:4]:
+                                    key = (source.id, iso(slot))
+                                    self.attempted[key] = now.timestamp()
+                                    try:
+                                        payload, receipt = v2_live_sample(source, slot)
+                                        self.store.add_observation(source.id, iso(slot), iso(slot), payload, payload,
+                                                                   receipt["sha256"], receipt["url"])
+                                    except Exception as exc:
+                                        LOG.warning("v2 historical %s %s: %s", source.id, iso(slot), exc)
+                            else:
+                                key = (source.id, day)
+                                if now.timestamp() - self.attempted.get(key, 0) < 3600:
+                                    continue
+                                self.attempted[key] = now.timestamp()
+                                try:
+                                    samples, receipt = v2_daily_samples(source, day, response_cache=response_cache)
+                                    for slot in missing:
+                                        payload = samples.get(iso(slot))
+                                        if payload is not None:
+                                            self.store.add_observation(source.id, iso(slot), iso(slot), payload,
+                                                                       payload, receipt["sha256"], receipt["url"])
+                                    LOG.info("v2 %s %s: %d hourly samples available", source.id, day, len(samples))
+                                except Exception as exc:
+                                    LOG.warning("v2 historical %s %s: %s", source.id, day, exc)
+                if len(self.attempted) > 1000:
+                    self.attempted = {key: value for key, value in self.attempted.items()
+                                      if now.timestamp() - value < 86400}
+            except Exception:
+                LOG.exception("v2 historical cycle failed")
+            self.stop.wait(300)
+
+
 class Handler(BaseHTTPRequestHandler):
     store: Store
 
@@ -369,9 +562,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/api/status":
+            v2 = self.store.v2_settings()
             self.send_json({"current": self.store.latest_day(), "history": self.store.history(),
                             "progress": self.store.progress(), "first_full_day": self.store.first_full_day(),
-                            "now_utc": iso(utc_now()), "source_names": SOURCE_NAMES})
+                            "now_utc": iso(utc_now()),
+                            "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},
+                            "v2": {"shadow_start_day_utc": v2["shadow_start_day_utc"],
+                                   "start_day_utc": v2["start_day_utc"],
+                                   "enabled_sources": [source.id for source in v2["enabled"]]}})
             return
         if path.startswith("/api/day/"):
             parts = path[len("/api/day/"):].split("/")
@@ -403,6 +601,8 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1", help="Web interface address (default: local only)")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=LOCAL_DATA / "timelinestamp.sqlite3")
+    parser.add_argument("--v2-config", type=Path, default=ROOT / "v2_sources.json",
+                        help="Local v2 source list and activation date")
     parser.add_argument("--headless", action="store_true", help="Collect without starting the local web server")
     parser.add_argument("--status", action="store_true", help="Print local collection status and exit")
     parser.add_argument("--restart", action="store_true", help="Ask the running collector to restart")
@@ -416,7 +616,7 @@ def main() -> None:
         args.log_file.parent.mkdir(parents=True, exist_ok=True)
         handlers = [RotatingFileHandler(args.log_file, maxBytes=2_000_000, backupCount=2, encoding="utf-8")]
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", handlers=handlers)
-    store = Store(args.db)
+    store = Store(args.db, args.v2_config)
     if args.restart:
         lock_path = args.db.with_suffix(args.db.suffix + ".lock")
         with lock_path.open("w") as lock:
@@ -428,9 +628,13 @@ def main() -> None:
                 return
         parser.error("Collector is not running with this database")
     if args.status:
+        v2 = store.v2_settings()
         backups = sorted(args.backup_dir.expanduser().glob("timelinestamp-*.sqlite3.gz")) if args.backup_dir else []
         print(canonical({"now_utc": iso(utc_now()), "first_full_day": store.first_full_day(),
                          "current": store.latest_day(), "progress": store.progress(),
+                         "v2": {"shadow_start_day_utc": v2["shadow_start_day_utc"],
+                                "start_day_utc": v2["start_day_utc"],
+                                "enabled_sources": [source.id for source in v2["enabled"]]},
                          "storage": store.storage_stats(),
                          "backups": [{"file": path.name, "bytes": path.stat().st_size} for path in backups]}).decode())
         return
@@ -445,6 +649,12 @@ def main() -> None:
 
 def run_server_and_collector(args: argparse.Namespace, store: Store) -> None:
     collector = Collector(store)
+    v2_live = V2LiveWorker(store)
+    v2_historical = V2HistoricalWorker(store)
+    v2_threads = [threading.Thread(target=v2_live.run, name="v2-live", daemon=True),
+                  threading.Thread(target=v2_historical.run, name="v2-historical", daemon=True)]
+    for worker in v2_threads:
+        worker.start()
     publisher = None
     publisher_thread = None
     backup_worker = None
@@ -480,6 +690,8 @@ def run_server_and_collector(args: argparse.Namespace, store: Store) -> None:
         pass
     finally:
         collector.stop.set()
+        v2_live.stop.set()
+        v2_historical.stop.set()
         if publisher is not None:
             publisher.stop.set()
         if backup_worker is not None:
@@ -488,6 +700,8 @@ def run_server_and_collector(args: argparse.Namespace, store: Store) -> None:
             publisher_thread.join(timeout=20)
         if backup_thread is not None:
             backup_thread.join(timeout=20)
+        for worker in v2_threads:
+            worker.join(timeout=20)
 
 
 if __name__ == "__main__":

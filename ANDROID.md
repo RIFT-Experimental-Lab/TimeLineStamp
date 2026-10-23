@@ -39,6 +39,33 @@ tail -n 30 ~/.local/state/timelinestamp/collector.log
 tail -n 30 ~/.local/state/timelinestamp/launcher.log
 ```
 
+## Проверить расширенный набор v2 с самого телефона
+
+После установки обновлённого архива выполните в Termux:
+
+```sh
+python ~/TimeLineStamp/probe_v2_sources.py --require-termux --output ~/.local/state/timelinestamp/probe-v2.json
+python ~/TimeLineStamp/probe_v2_sources.py --list-requests
+python ~/TimeLineStamp/v2_toggle.py list
+```
+
+Первая команда делает реальные HTTPS-запросы с телефона ко всем 34 закреплённым рядам и зонам; вторая печатает точный список URL с актуальными датами без повторной загрузки. Для текущих источников проверка смотрит свежий снимок; для исторических — данные за текущие сутки; для Wikimedia — полные предыдущие сутки. `ok` означает, что ответ получен и разобран, `stale` — что последнее измерение старше восьми часов, `delayed` — что ещё нет всех 24 часовых значений Wikimedia, `failed` — сетевую ошибку, пустой или неожиданный ответ. Команда выводит результаты по каждому ID и сохраняет HTTP-код, размер, время запроса и хеш ответа в локальный JSON. Сам факт `HTTP 200` без полезных данных успехом не считается. Выходной код `1` означает, что хотя бы одна позиция не готова.
+
+Запросы построены из `v2_sources.py`; точные ID, станции и URL также сведены в локальном документе `v2-ready-source-set.md`. Основные адреса: `geofon.gfz.de/fdsnws`, `service-nrt.geonet.org.nz/fdsnws`, `imag-data.bgs.ac.uk/GIN_V1/hapi`, `api.tidesandcurrents.noaa.gov/api/prod`, `ndbc.noaa.gov/data/realtime2`, `api.waterdata.usgs.gov/ogcapi/v1`, `api.weather.gc.ca/collections/hydrometric-realtime`, `environment.data.gov.uk/flood-monitoring`, `pegelonline.wsv.de/webservices/rest-api/v2`, `opensky-network.org/api/states/all`, `wikimedia.org/api/rest_v1`, `planet.openstreetmap.org/replication/minute`. Это именно запросы из сети телефона; запуск такого же теста на Mac не устанавливает доступность на Android.
+
+Для быстрого исключения проблемного ряда или всего поставщика:
+
+```sh
+python ~/TimeLineStamp/v2_toggle.py disable im_sit
+python ~/TimeLineStamp/v2_toggle.py disable-group opensky
+python ~/TimeLineStamp/v2_toggle.py enable im_sit
+python ~/TimeLineStamp/v2_toggle.py list
+```
+
+ID и группы перечисляет `list`. Настройки живут только в `~/.config/timelinestamp/v2-sources.json`; при обновлении архива не заменяются. Изменение применяется к ещё не закрытым суткам, а закрытые записи остаются неизменными. Для теневого сбора без изменения суточного числа выполните `python ~/TimeLineStamp/v2_toggle.py shadow YYYY-MM-DD`, указав сегодняшнюю или будущую дату UTC. После проверки полноты назначьте **будущую** дату первого полного дня v2 UTC командой `python ~/TimeLineStamp/v2_toggle.py activate YYYY-MM-DD`. Сборщик читает настройки автоматически в каждом цикле; перезапуск не требуется. До назначенной даты продолжает работать v1. Новый день v2 закрывается через 48 часов 15 минут после его окончания, чтобы дождаться запаздывающих часовых данных; публикация страницы происходит после закрытия.
+
+После отключения групп команда `python ~/TimeLineStamp/probe_v2_sources.py --require-termux --enabled-only` проверяет только включённые источники. Полную проверку всех 34 можно по-прежнему запускать без `--enabled-only`.
+
 Сборщик работает без открытого веб-порта, хранит измерения в `~/TimeLineStamp/data/timelinestamp.sqlite3` и запускается повторно, если завершился процесс Python. Termux:Boot запускает его после перезагрузки; `termux-wake-lock` вызывается автоматически. Вторая копия сборщика с той же базой не запустится. Если Android завершит само приложение Termux, его внутренний перезапуск тоже остановится; после следующей ожидаемой суточной фиксации страница покажет задержку публикации. При отключении питания или сети возможны пропуски; история уже зафиксированных суток не меняется.
 
 ## Управление с Mac по SSH в локальной сети

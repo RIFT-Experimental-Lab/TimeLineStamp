@@ -66,3 +66,9 @@ Optional `--backup-dir` and `--log-file` arguments enable two rotating compresse
 Beacon pulses are checked for their expected timestamp, the presence of indices, and normal status. NOAA rows are accepted only when active, with overall quality flag `0` and numeric values. Version 1 does not cryptographically verify beacon signatures. If a source format changes, the calculation rules need a new version; previously sealed records remain as they were.
 
 The measurements belong to their respective operators. TimeLineStamp records their published outputs and does not control the sources.
+
+## Optional v2 source set
+
+The collector also contains a versioned v2 input set: 34 fixed observation series or areas from 12 public APIs, spanning seismometers, geomagnetic observatories, sea and river gauges, ocean buoys, observed aircraft, Wikimedia pageviews, and OpenStreetMap changes. It can collect in shadow mode without changing the daily number; v2 calculation starts only on a future UTC day set in the local `v2_sources.json` configuration. Existing v1 days keep their original manifest and digest.
+
+Run `python3 probe_v2_sources.py --output /private/path/probe-v2.json` **on the collecting device** to test each endpoint, response structure, and observation freshness from that network. `v2_toggle.py` lists the source IDs and can disable one source or an entire provider without changing code. A v2 day uses fixed UTC slots and seals 48 hours 15 minutes after the end of the day to allow delayed feeds. See [ANDROID.md](ANDROID.md) for deployment commands. The public page still emphasizes the four original streams; v2 counts are retained in the daily record.

@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from timelinestamp import SOURCE_NAMES, Store, canonical, iso, utc_now
+from timelinestamp import SOURCE_NAMES, V2_SOURCES, Store, canonical, iso, utc_now
 
 
 LOG = logging.getLogger("timelinestamp.publisher")
@@ -36,9 +36,10 @@ def public_status(store: Store, now: datetime) -> dict:
         "format": "timelinestamp-status-v1",
         "published_at": iso(now),
         "first_full_day": store.first_full_day(),
+        "v2_start_day_utc": store.v2_settings()["start_day_utc"],
         "current": store.latest_day(),
         "history": store.history(30),
-        "source_names": SOURCE_NAMES,
+        "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},
     }
 
 
