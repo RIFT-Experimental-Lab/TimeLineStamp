@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 
 from v2_sources import SOURCES as V2_SOURCES, SOURCE_BY_ID as V2_SOURCE_BY_ID
 from v2_sources import daily_samples as v2_daily_samples, live_sample as v2_live_sample
+from period_codes import ensure_period_codes, public_period_codes
 
 
 ROOT = Path(__file__).resolve().parent
@@ -111,8 +112,18 @@ class Store:
                     counts TEXT NOT NULL,
                     manifest TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS period_codes (
+                    scope TEXT NOT NULL,
+                    start_utc TEXT NOT NULL,
+                    end_utc TEXT NOT NULL,
+                    digest TEXT NOT NULL,
+                    quality TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (scope, start_utc)
+                );
             """)
             db.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('started_at',?)", (iso(utc_now()),))
+        ensure_period_codes(self)
 
     def connect(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self.path), timeout=15)
@@ -248,6 +259,7 @@ class Store:
             db.execute("""INSERT OR IGNORE INTO days(day,created_at,digest,coefficient,quality,counts,manifest)
                 VALUES(?,?,?,?,?,?,?)""", (day, created, digest, coefficient, quality,
                                            canonical(counts).decode(), canonical(manifest).decode()))
+        ensure_period_codes(self)
         LOG.info("Finalized %s: %s (%s)", day, coefficient, quality)
         return self.get_day(day)
 
@@ -565,6 +577,7 @@ class Handler(BaseHTTPRequestHandler):
             v2 = self.store.v2_settings()
             self.send_json({"current": self.store.latest_day(), "history": self.store.history(),
                             "progress": self.store.progress(), "first_full_day": self.store.first_full_day(),
+                            "period_codes": public_period_codes(self.store),
                             "now_utc": iso(utc_now()),
                             "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},
                             "v2": {"shadow_start_day_utc": v2["shadow_start_day_utc"],
@@ -632,6 +645,7 @@ def main() -> None:
         backups = sorted(args.backup_dir.expanduser().glob("timelinestamp-*.sqlite3.gz")) if args.backup_dir else []
         print(canonical({"now_utc": iso(utc_now()), "first_full_day": store.first_full_day(),
                          "current": store.latest_day(), "progress": store.progress(),
+                         "period_codes": public_period_codes(store),
                          "v2": {"shadow_start_day_utc": v2["shadow_start_day_utc"],
                                 "start_day_utc": v2["start_day_utc"],
                                 "enabled_sources": [source.id for source in v2["enabled"]]},

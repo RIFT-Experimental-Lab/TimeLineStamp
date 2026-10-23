@@ -19,7 +19,7 @@ from pathlib import Path
 if sys.version_info < (3, 9):
     raise SystemExit("Python 3.9 or newer is required")
 root = Path(sys.argv[1])
-for name in ("timelinestamp.py", "test_now.py", "backup_store.py", "publish_github.py", "v2_sources.py", "probe_v2_sources.py", "v2_toggle.py", "android/ssh-watchdog.py"):
+for name in ("timelinestamp.py", "test_now.py", "backup_store.py", "publish_github.py", "period_codes.py", "v2_sources.py", "probe_v2_sources.py", "v2_toggle.py", "android/ssh-watchdog.py"):
     ast.parse((root / name).read_text(encoding="utf-8"), filename=name)
 PY
 config_dir="$HOME/.config/timelinestamp"

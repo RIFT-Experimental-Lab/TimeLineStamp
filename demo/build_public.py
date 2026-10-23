@@ -72,6 +72,11 @@ def main() -> None:
     page = replace_once(page, r'(<div class="signature">\s*<div><span class="micro">.*?</span>)<strong>.*?</strong>',
         r'\1<strong id="digest"></strong>')
     page = replace_once(page, r'(<div class="signature-graph"><svg.*?<g[^>]*>).*?(</g>)', r'\1\2')
+    period_css = (ROOT / "period_codes.css").read_text(encoding="utf-8")
+    period_panel = (ROOT / "period_codes_panel.html").read_text(encoding="utf-8")
+    page = page.replace("</style>", period_css + "\n</style>", 1)
+    page = replace_once(page, r'(</div>\s*</section>\s*<section class="comparison")',
+        '</div>' + period_panel + '</section><section class="comparison"')
     page = replace_once(page, r'<div class="facts".*?(?=\s*<section class="section theory")',
         '<div class="facts" aria-label="Period details">'
         '<div class="fact"><span class="micro" id="period-label"></span><strong id="period"></strong><small id="period-note"></small></div>'
@@ -114,7 +119,7 @@ def main() -> None:
     catalog = json.loads(catalog_match.group(1))
     public_catalog = {key: value for key, value in catalog.items() if key in visible.values}
     page = page[:catalog_match.start(1)] + json.dumps(public_catalog, ensure_ascii=False).replace("</", "<\\/") + page[catalog_match.end(1):]
-    page = page.replace('</body>', '  <script src="./app.js?v=daily-1" defer></script>\n</body>', 1)
+    page = page.replace('</body>', '  <script src="./app.js?v=period-1" defer></script>\n</body>', 1)
     if "__" in page and re.search(r"__[A-Z_]+__", page):
         raise ValueError("Unresolved template marker")
     DOCS.mkdir(exist_ok=True)

@@ -1,6 +1,6 @@
 # Публикация GitHub Pages
 
-**Сайт опубликован:** [rift-experimental-lab.github.io/TimeLineStamp/](https://rift-experimental-lab.github.io/TimeLineStamp/). GitHub Pages берёт файлы из `main/docs`. Страница читает закрытые суточные записи из `data/status.json` и отдельный фиксированный первичный снимок из `data/initial.json`. Сервер публикует новый статус один раз после каждой суточной фиксации. Демо собирается отдельно в `../local/TimeLineStamp-demo.html`. Файл `.nojekyll` отключает обработку Jekyll.
+**Сайт опубликован:** [rift-experimental-lab.github.io/TimeLineStamp/](https://rift-experimental-lab.github.io/TimeLineStamp/). GitHub Pages берёт файлы из `main/docs`. Страница читает закрытые суточные записи и коды периодов из `data/status.json`, а отдельный фиксированный первичный снимок — из `data/initial.json`. Сервер публикует новый статус один раз после каждой суточной фиксации. Демо собирается отдельно в `../local/TimeLineStamp-demo.html`. Файл `.nojekyll` отключает обработку Jekyll.
 
 После изменения макета в `demo/` пересоберите оба файла командой `python3 demo/build_public.py` из корня репозитория. Она обновляет локальное демо и `docs/index.html`; измеренные числа в страницу подставляет `docs/app.js` из `docs/data/status.json`.
 

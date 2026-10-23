@@ -14,7 +14,7 @@ temporary="$(mktemp "$archive_dir/.TimeLineStamp-android.XXXXXX")"
 trap 'rm -f "$temporary"' EXIT
 tar -czf "$temporary" -C "$project_dir" \
   timelinestamp.py publish_github.py backup_store.py test_now.py test_now.command \
-  v2_sources.py v2_sources.json probe_v2_sources.py v2_toggle.py \
+  v2_sources.py v2_sources.json probe_v2_sources.py v2_toggle.py period_codes.py \
   README.md ANDROID.md GITHUB_PAGES.md \
   docs/index.html docs/style.css docs/app.js docs/.nojekyll docs/data/status.json \
   android/config.example android/install-termux.sh android/termux-boot.sh \

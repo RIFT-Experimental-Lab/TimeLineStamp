@@ -70,6 +70,22 @@
       initialUpdated:'初始快照已发布',
     },
   };
+  const periodWords = {
+    en: {title:'Period codes', intro:'Short marks for smaller UTC intervals. Compare a remembered mark with the same period here. They narrow a difference in measurements; they cannot establish the exact time of an intervention.',
+      day:'DAY', week:'WEEK', month:'MONTH', year:'YEAR', pending:'awaiting seal', unavailable:'no complete record', sealed:'sealed',
+      risk:'One changed interval can retain the same short mark with probability', legend:'A solid mark is sealed. A moving mark is only a placeholder. A dash means no complete record for that period.', noDay:'The first daily record is still being collected.',
+      format:'Format', weekDay:'UTC day', monthBlock:'UTC dates', monthName:'UTC month'},
+    ru: {title:'Коды периодов', intro:'Короткие метки для меньших интервалов UTC. Сравните метку, которую помните, с тем же периодом здесь. Они сужают расхождение в измерениях, но не устанавливают точное время вмешательства.',
+      day:'ДЕНЬ', week:'НЕДЕЛЯ', month:'МЕСЯЦ', year:'ГОД', pending:'ожидает фиксации', unavailable:'нет полной записи', sealed:'зафиксировано',
+      risk:'Вероятность совпадения короткой метки при изменении одного интервала', legend:'Постоянная метка зафиксирована. Перебирающийся знак — только заглушка. Прочерк означает отсутствие полной записи за период.', noDay:'Первые полные сутки ещё собираются.',
+      format:'Формат', weekDay:'Сутки UTC', monthBlock:'Даты UTC', monthName:'Месяц UTC'},
+    zh: {title:'时段代码', intro:'较短 UTC 时段的简短标记。请将记忆中的标记与此处同一时段比较。它们可缩小测量差异所在的时段，但无法确定干预发生的确切时间。',
+      day:'日', week:'周', month:'月', year:'年', pending:'等待封存', unavailable:'无完整记录', sealed:'已封存',
+      risk:'一个时段改变后简短标记仍相同的概率', legend:'固定标记已封存。跳动字符只是占位符。横线表示该时段没有完整记录。', noDay:'首个完整 UTC 日期仍在采集中。',
+      format:'格式', weekDay:'UTC 日期', monthBlock:'UTC 日期', monthName:'UTC 月份'},
+  };
+  const periodAlphabets = {hex:'0123456789ABCDEF', base32:'0123456789ABCDEFGHJKMNPQRSTVWXYZ', base58:'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'};
+  let periodFormat = 'hex';
   let snapshot = null;
   let initial = null;
   let failed = false;
@@ -121,6 +137,61 @@
       for (const [name, value] of Object.entries({x1:x, y1:(43-height).toFixed(1), x2:x, y2:43})) line.setAttribute(name, String(value));
       graph.appendChild(line);
     });
+  }
+  function renderPeriodCodes(data) {
+    const words = periodWords[lang()];
+    put('pc-title', words.title);
+    put('pc-intro', words.intro);
+    put('pc-legend', words.legend);
+    $('pc-formats').setAttribute('aria-label', words.format);
+    document.querySelectorAll('[data-pc-format]').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.pcFormat === periodFormat));
+      button.setAttribute('aria-label', `${words.format}: ${button.textContent}`);
+    });
+    const base = periodAlphabets[periodFormat].length;
+    put('pc-format-note', `${periodFormat.toUpperCase()} · ${base} ${lang() === 'zh' ? '个字符' : lang() === 'ru' ? 'символов' : 'symbols'}`);
+    const registers = $('pc-registers');
+    registers.replaceChildren();
+    const periods = data?.period_codes;
+    if (periods?.format !== 'timelinestamp-period-v1') {
+      add(registers, 'p', words.noDay, 'pc-intro');
+      return;
+    }
+    for (const scope of ['day','week','month','year']) {
+      const record = periods[scope];
+      const section = add(registers, 'section', '', 'pc-register');
+      const head = add(section, 'div', '', 'pc-register-head');
+      add(head, 'span', words[scope], 'pc-register-name');
+      add(head, 'span', record ? `${record.label} · UTC` : '—', 'pc-register-date');
+      const positions = record?.positions || [];
+      add(head, 'span', `${positions.filter(position => position.state === 'sealed').length}/${positions.length || (scope === 'day' ? 6 : scope === 'week' ? 7 : scope === 'month' ? 4 : 12)} ${words.sealed}`, 'pc-register-state');
+      if (scope === 'day' && !record) { add(section, 'p', words.noDay, 'pc-intro'); continue; }
+      const probability = (100 / base ** (scope === 'month' ? 2 : 1)).toLocaleString(lang(), {maximumFractionDigits:4});
+      add(section, 'p', `${words.risk}: ${probability}%`, 'pc-risk');
+      const scroller = add(section, 'div', '', 'pc-code-scroll');
+      const code = add(scroller, 'div', '', 'pc-code');
+      positions.forEach((position, index) => {
+        if (index) add(code, 'span', '.', 'pc-dot').setAttribute('aria-hidden', 'true');
+        const group = add(code, 'div', '', scope === 'month' ? 'pc-group pc-group--pair' : 'pc-group');
+        const start = new Date(position.start_utc);
+        const end = new Date(new Date(position.end_utc).getTime() - 1);
+        const label = scope === 'day' ? `${String(start.getUTCHours()).padStart(2,'0')}–${String((end.getUTCHours()+1) % 24 || 24).padStart(2,'0')}` :
+          scope === 'week' ? new Intl.DateTimeFormat(lang(), {timeZone:'UTC', day:'2-digit', month:'2-digit'}).format(start) :
+          scope === 'month' ? `${String(start.getUTCDate()).padStart(2,'0')}–${String(end.getUTCDate()).padStart(2,'0')}` :
+          new Intl.DateTimeFormat(lang(), {timeZone:'UTC', month:'short'}).format(start);
+        add(group, 'span', label, 'pc-period');
+        const state = position.state === 'sealed' ? 'sealed' : position.state === 'unavailable' ? 'unavailable' : 'pending';
+        const glyphs = add(group, 'div', '', 'pc-pair-digits');
+        const value = state === 'sealed' ? position.codes?.[periodFormat] : null;
+        for (let i = 0; i < (scope === 'month' ? 2 : 1); i++) {
+          const glyph = add(glyphs, 'span', value?.[i] || (state === 'unavailable' ? '—' : '?'), 'pc-glyph');
+          glyph.dataset.state = state;
+          glyph.setAttribute('aria-hidden', 'true');
+        }
+        group.setAttribute('aria-label', `${label} UTC: ${state === 'sealed' ? value : words[state]}`);
+        if (position.sha256) group.title = `SHA-256 ${position.sha256}`;
+      });
+    }
   }
   function renderStreams(data, record, isInitial) {
     const container = $('streams');
@@ -230,6 +301,7 @@
     put('number-note', isInitial ? word.initialNumber : word.dailyNumber);
     put('quality', isInitial ? word.initialState : current ? current.quality === 'good' ? word.good : current.quality === 'partial' ? word.partial : word.noQuantum : word.collecting);
     renderHash(record?.digest);
+    renderPeriodCodes(data);
     put('period-label', word.period);
     put('period', isInitial ? shownDay : current ? shownDay : data.first_full_day ? `${word.firstDay}: ${shownDay}` : '—');
     put('period-note', isInitial ? `${word.initialPeriod}: ${utcStamp(initial.period_start)} – ${utcStamp(initial.created_at)}` : '00:00–24:00 UTC');
@@ -268,6 +340,17 @@
     render();
   }
   document.querySelectorAll('.language-switch [data-lang]').forEach(button => button.addEventListener('click', render));
+  document.querySelectorAll('[data-pc-format]').forEach(button => button.addEventListener('click', () => {
+    periodFormat = button.dataset.pcFormat;
+    renderPeriodCodes(snapshot);
+  }));
+  setInterval(() => {
+    if (!$('period-codes').open || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const alphabet = periodAlphabets[periodFormat];
+    document.querySelectorAll('#period-codes .pc-glyph[data-state="pending"]').forEach(glyph => {
+      glyph.textContent = alphabet[Math.floor(Math.random() * alphabet.length)];
+    });
+  }, 90);
   render();
   refresh();
   setInterval(refresh, 5*60_000);

@@ -10,6 +10,8 @@ Imagine that an intervention in the past changes the course of a day. Some physi
 
 If you remember a different number **for the same UTC date** than the one shown now, write to [rift.research@outlook.com](mailto:rift.research@outlook.com). Include the date, the number you remember, and the number currently on the page. The report can rest on memory alone; the experiment looks for precisely that kind of discrepancy. A daily difference cannot reveal when a possible change occurred.
 
+The page also shows secondary period codes below the daily coefficient. Six hexadecimal marks divide a sealed day into four-hour UTC intervals. A week has seven daily marks, a month has four two-character marks for days 1–7, 8–14, 15–21, and 22–end, and a year has twelve monthly marks. Week, month, and year fill as their component records are sealed. The day code appears all at once after the daily seal. A difference in a short mark can narrow the differing measurement interval; it does not establish when an intervention occurred.
+
 The [public page](https://rift-experimental-lab.github.io/TimeLineStamp/) explains the timeline model, the choice of measurements, the calculation, and each source in English, Russian, and Chinese. English is the default language.
 
 ## How a daily record is made
@@ -26,6 +28,8 @@ Version 1 expects 288 pulses per beacon and up to 1,440 one-minute entries per N
 The site in [`docs/`](docs/) is static. After each daily seal, the server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, and the publication time. It does not publish current collection progress. A separate, fixed [initial snapshot](docs/data/initial.json) was calculated from the measurements collected on 2026-10-22 before the first full UTC day. The page labels its number as incomplete and keeps it in the archive after daily records begin. It is not a daily coefficient. The page marks a daily publication as delayed if the next record does not arrive.
 
 Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The browser never connects directly to the server.
+
+Period codes are derived only from sealed daily records and stored immutably in `period_codes`. The public JSON includes their interval boundaries, full SHA-256 digests, quality, and short marks, but no raw measurements. The selectable HEX 16, BASE32, and BASE58 views derive from the same full digest; pending symbols on the page are visual placeholders and are never published as readings. Dates before the first full collection day remain unavailable.
 
 The initial snapshot uses only observations with event times on its UTC date before `created_at` and with `received_at` strictly before that time. Its manifest format is `timelinestamp-initial-v1`; the SHA-256 digest and short number use the same canonical encoding and coefficient mapping as daily records. The calculation is in [initial_snapshot.py](initial_snapshot.py). Unlike a daily record, it covers only part of a day and is never updated.
 
@@ -57,7 +61,7 @@ Optional `--backup-dir` and `--log-file` arguments enable two rotating compresse
 
 ### Local API
 
-- `/api/status` — latest record, recent history, and current collection progress.
+- `/api/status` — latest record, recent history, period codes, and current collection progress.
 - `/api/day/YYYY-MM-DD` — digest, coefficient, quality, and source counts for one day.
 - `/api/day/YYYY-MM-DD/manifest` — the canonical inputs used to calculate that day's digest.
 

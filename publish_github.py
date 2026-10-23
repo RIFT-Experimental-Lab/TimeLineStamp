@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from timelinestamp import SOURCE_NAMES, V2_SOURCES, Store, canonical, iso, utc_now
+from period_codes import ensure_period_codes, public_period_codes
 
 
 LOG = logging.getLogger("timelinestamp.publisher")
@@ -32,6 +33,7 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 def public_status(store: Store, now: datetime) -> dict:
+    ensure_period_codes(store)
     v2 = store.v2_settings()
     return {
         "format": "timelinestamp-status-v1",
@@ -40,6 +42,7 @@ def public_status(store: Store, now: datetime) -> dict:
         "v2_start_day_utc": v2["start_day_utc"],
         "v2_shadow_start_day_utc": v2["shadow_start_day_utc"],
         "v2_enabled_source_count": len(v2["enabled"]),
+        "period_codes": public_period_codes(store, now.date()),
         "current": store.latest_day(),
         "history": store.history(30),
         "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},
