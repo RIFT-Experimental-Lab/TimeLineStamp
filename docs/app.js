@@ -1,4 +1,4 @@
-/* The public page renders measurements only from data/status.json. */
+/* The public page renders fixed records from data/status.json and data/initial.json. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -12,7 +12,7 @@
     en: {
       connecting:'CONNECTING TO THE RECORD', waiting:'COLLECTING THE FIRST DAY', updated:'RECORD UPDATED', delayed:'PUBLICATION DELAYED', unavailable:'RECORD UNAVAILABLE',
       noSnapshot:'No public snapshot yet', published:'Published', day:'DAY', state:'STATUS', collecting:'COLLECTING', sealed:'SEALED', record:'RECORD', daily:'DAILY RECORD', first:'FIRST UTC DAY',
-      period:'PERIOD', next:'NEXT SEAL', quantum:'QUANTUM PULSES', firstDay:'First full day', nextNote:'UTC, after the next day', quantumNote:'Two quantum beacons',
+      period:'PERIOD', next:'FIXED AT', quantum:'QUANTUM PULSES', firstDay:'First full day', nextNote:'UTC · fixed record', quantumNote:'Two quantum beacons',
       today:'Collection in progress today, UTC. Counts are provisional.', shown:'Measurements in the sealed UTC record. Missing entries remain visible.',
       empty:'Records will appear after the first full UTC day.', count:'RECORDS SHOWN', last30:'LATEST RECORDS',
       photos:'Photographs show instruments and the observation site, not readings from the displayed day.',
@@ -22,14 +22,14 @@
       mailSubject:'TimeLineStamp — discrepancy', mailDay:'UTC date', mailRemembered:'Number I remember', mailShown:'Number shown now', mailWhen:'When I noticed the difference',
       good:'● COMPLETE DATA', partial:'● INCOMPLETE DATA', noQuantum:'● QUANTUM DATA UNAVAILABLE',
       initial:'INITIAL SNAPSHOT', initialState:'CAPTURED · INCOMPLETE', initialIntro:'An initial fingerprint from the measurements collected so far. This fixed snapshot covers only part of a UTC day; the first daily coefficient will be sealed separately.',
-      initialLock:'INITIAL SNAPSHOT · NOT A DAILY RECORD', initialStreams:'Measurements included in this fixed initial snapshot. Collection continues for the first full UTC day.', initialMail:'Record type: initial incomplete snapshot',
+      initialLock:'INITIAL SNAPSHOT · NOT A DAILY RECORD', initialStreams:'Measurements included in this fixed initial snapshot.', initialMail:'Record type: initial incomplete snapshot',
       initialNumber:'SHORT MARKER FOR THE INITIAL SNAPSHOT', dailyNumber:'SHORT MARKER FOR THE DAILY RECORD', initialPeriod:'PARTIAL UTC WINDOW', initialInstrument:'TS-01 / INITIAL SNAPSHOT', dailyInstrument:'TS-01 / DAILY COEFFICIENT',
       initialUpdated:'INITIAL SNAPSHOT PUBLISHED',
     },
     ru: {
       connecting:'ПОДКЛЮЧЕНИЕ К ЗАПИСИ', waiting:'СБОР ПЕРВЫХ СУТОК', updated:'ЗАПИСЬ ОБНОВЛЕНА', delayed:'ПУБЛИКАЦИЯ ЗАДЕРЖИВАЕТСЯ', unavailable:'ЗАПИСЬ НЕДОСТУПНА',
       noSnapshot:'Публичного снимка пока нет', published:'Опубликовано', day:'СУТКИ', state:'СОСТОЯНИЕ', collecting:'СБОР', sealed:'ЗАКРЫТО', record:'ЗАПИСЬ', daily:'ЗАПИСЬ СУТОК', first:'ПЕРВЫЕ СУТКИ UTC',
-      period:'ПЕРИОД', next:'СЛЕДУЮЩАЯ ФИКСАЦИЯ', quantum:'КВАНТОВЫЕ ПУЛЬСЫ', firstDay:'Первые полные сутки', nextNote:'UTC, после новых суток', quantumNote:'Два квантовых маяка',
+      period:'ПЕРИОД', next:'ЗАФИКСИРОВАНО', quantum:'КВАНТОВЫЕ ПУЛЬСЫ', firstDay:'Первые полные сутки', nextNote:'UTC · неизменяемая запись', quantumNote:'Два квантовых маяка',
       today:'Сегодня идёт сбор по UTC. Счётчики предварительные.', shown:'Измерения за закрытые сутки UTC. Пропуски видны в итоговой записи.',
       empty:'Записи появятся после первых полных суток UTC.', count:'ПОКАЗАНО ЗАПИСЕЙ', last30:'ПОСЛЕДНИЕ ЗАПИСИ',
       photos:'Фотографии показывают приборы и место наблюдения, а не измерения за показанные сутки.',
@@ -39,14 +39,14 @@
       mailSubject:'TimeLineStamp — расхождение', mailDay:'Дата UTC', mailRemembered:'Число, которое я помню', mailShown:'Число на странице сейчас', mailWhen:'Когда заметил расхождение',
       good:'● ПОЛНЫЕ ДАННЫЕ', partial:'● НЕПОЛНЫЕ ДАННЫЕ', noQuantum:'● НЕТ КВАНТОВЫХ ДАННЫХ',
       initial:'ПЕРВИЧНЫЙ СНИМОК', initialState:'ЗАФИКСИРОВАН · НЕПОЛНЫЙ', initialIntro:'Первичный отпечаток из уже собранных измерений. Этот неизменяемый снимок охватывает лишь часть суток UTC; первый суточный коэффициент будет зафиксирован отдельно.',
-      initialLock:'ПЕРВИЧНЫЙ СНИМОК · НЕ СУТОЧНАЯ ЗАПИСЬ', initialStreams:'Измерения, вошедшие в первичный снимок. Сбор первых полных суток UTC продолжается.', initialMail:'Тип записи: первичный неполный снимок',
+      initialLock:'ПЕРВИЧНЫЙ СНИМОК · НЕ СУТОЧНАЯ ЗАПИСЬ', initialStreams:'Измерения, вошедшие в зафиксированный первичный снимок.', initialMail:'Тип записи: первичный неполный снимок',
       initialNumber:'КОРОТКАЯ МЕТКА ПЕРВИЧНОГО СНИМКА', dailyNumber:'КОРОТКАЯ МЕТКА ЗАПИСИ ЗА СУТКИ', initialPeriod:'НЕПОЛНЫЙ ПЕРИОД UTC', initialInstrument:'TS-01 / ПЕРВИЧНЫЙ СНИМОК', dailyInstrument:'TS-01 / СУТОЧНЫЙ КОЭФФИЦИЕНТ',
       initialUpdated:'ПЕРВИЧНЫЙ СНИМОК ОПУБЛИКОВАН',
     },
     zh: {
       connecting:'正在连接记录', waiting:'正在采集首个完整日期', updated:'记录已更新', delayed:'发布延迟', unavailable:'记录不可用',
       noSnapshot:'尚无公开快照', published:'发布时间', day:'日期', state:'状态', collecting:'采集中', sealed:'已封存', record:'记录', daily:'每日记录', first:'首个 UTC 日期',
-      period:'周期', next:'下次封存', quantum:'量子脉冲', firstDay:'首个完整日期', nextNote:'UTC，下一日结束后', quantumNote:'两个量子信标',
+      period:'周期', next:'记录时间', quantum:'量子脉冲', firstDay:'首个完整日期', nextNote:'UTC · 已固定记录', quantumNote:'两个量子信标',
       today:'正在采集今天的 UTC 数据，计数尚未确定。', shown:'已封存 UTC 日期的测量值。缺失项会保留在记录中。',
       empty:'首个完整 UTC 日期结束后，记录将显示在这里。', count:'显示记录数', last30:'最近记录',
       photos:'照片展示仪器和观测地点，并非当前日期的测量结果。',
@@ -56,7 +56,7 @@
       mailSubject:'TimeLineStamp — 读数差异', mailDay:'UTC 日期', mailRemembered:'我记得的数字', mailShown:'页面当前显示的数字', mailWhen:'发现差异的时间',
       good:'● 数据完整', partial:'● 数据不完整', noQuantum:'● 量子数据不可用',
       initial:'初始快照', initialState:'已记录 · 数据不完整', initialIntro:'根据目前已采集的测量值生成的初始指纹。这份固定快照只覆盖 UTC 日期的一部分；首个每日系数将另行封存。',
-      initialLock:'初始快照 · 非每日记录', initialStreams:'此固定初始快照包含的测量值。首个完整 UTC 日期的数据采集仍在继续。', initialMail:'记录类型：初始不完整快照',
+      initialLock:'初始快照 · 非每日记录', initialStreams:'此固定初始快照包含的测量值。', initialMail:'记录类型：初始不完整快照',
       initialNumber:'初始快照的简短标记', dailyNumber:'每日记录的简短标记', initialPeriod:'UTC 日期的部分时段', initialInstrument:'TS-01 / 初始快照', dailyInstrument:'TS-01 / 每日系数',
       initialUpdated:'初始快照已发布',
     },
@@ -76,14 +76,11 @@
     const date = new Date(value);
     return Number.isFinite(date.getTime()) ? date.toISOString().slice(0,16).replace('T',' ') + ' UTC' : '—';
   }
-  function nextSeal(firstDay) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(firstDay || '')) return null;
-    const earliest = new Date(`${firstDay}T00:15:00Z`);
-    earliest.setUTCDate(earliest.getUTCDate() + 1);
-    const now = new Date();
-    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 15));
-    if (now >= next) next.setUTCDate(next.getUTCDate() + 1);
-    return next > earliest ? next : earliest;
+  function sealDue(day, daysAfter) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day || '')) return null;
+    const due = new Date(`${day}T00:15:00Z`);
+    due.setUTCDate(due.getUTCDate() + daysAfter);
+    return due;
   }
   function add(parent, tag, value, className) {
     const node = document.createElement(tag);
@@ -121,7 +118,7 @@
     container.replaceChildren();
     put('streams-description', isInitial ? t().initialStreams : record ? t().shown : t().today);
     sources.forEach(([key, name, expected, subtitle], index) => {
-      const raw = record ? record.counts?.[key]?.received : data.progress?.[key]?.count;
+      const raw = record?.counts?.[key]?.received;
       const count = Number.isFinite(Number(raw)) ? Math.max(0, Number(raw)) : 0;
       const total = Number(record?.counts?.[key]?.expected) || expected;
       const row = add(container, 'div', '', 'stream');
@@ -179,7 +176,8 @@
     const word = t();
     const published = data.published_at ? new Date(data.published_at) : null;
     const valid = published && Number.isFinite(published.getTime());
-    const stale = valid && Date.now() - published.getTime() > 3*3600_000;
+    const due = current ? sealDue(current.day, 2) : sealDue(data.first_full_day, 1);
+    const stale = valid && due && Date.now() - due.getTime() > 3*3600_000;
     put('live-label', failed ? word.unavailable : !valid ? snapshot ? word.waiting : word.connecting : stale ? word.delayed : current ? word.updated : isInitial ? word.initialUpdated : word.waiting);
     put('last-published', valid ? `${word.published}: ${utcStamp(data.published_at)}` : word.noSnapshot);
     const day = record?.day || data.first_full_day || '';
@@ -202,12 +200,11 @@
     put('period', isInitial ? shownDay : current ? shownDay : data.first_full_day ? `${word.firstDay}: ${shownDay}` : '—');
     put('period-note', isInitial ? `${word.initialPeriod}: ${utcStamp(initial.period_start)} – ${utcStamp(initial.created_at)}` : '00:00–24:00 UTC');
     put('next-lock-label', word.next);
-    const seal = nextSeal(data.first_full_day);
-    put('next-lock', seal ? utcStamp(seal.toISOString()) : '—');
+    put('next-lock', record?.created_at ? utcStamp(record.created_at) : '—');
     put('next-lock-note', word.nextNote);
     put('quantum-label', word.quantum);
-    const nist = Number(record?.counts?.nist?.received ?? data.progress?.nist?.count ?? 0);
-    const nqsn = Number(record?.counts?.nqsn?.received ?? data.progress?.nqsn?.count ?? 0);
+    const nist = Number(record?.counts?.nist?.received ?? 0);
+    const nqsn = Number(record?.counts?.nqsn?.received ?? 0);
     put('quantum-count', `${Math.max(0, nist+nqsn)} / 576`);
     put('quantum-note', word.quantumNote);
     renderStreams(data, record, isInitial);
@@ -219,13 +216,13 @@
     try {
       const [response, initialResponse] = await Promise.all([
         fetch(`./data/status.json?t=${Date.now()}`, {cache:'no-store'}),
-        fetch(`./data/initial.json?t=${Date.now()}`, {cache:'no-store'}),
+        fetch(`./data/initial.json?t=${Date.now()}`, {cache:'no-store'}).catch(() => null),
       ]);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data.format !== 'timelinestamp-status-v1') throw new Error('Unsupported status format');
       snapshot = data;
-      if (initialResponse.ok) {
+      if (initialResponse?.ok) {
         const candidate = await initialResponse.json();
         initial = candidate.format === 'timelinestamp-initial-v1' ? candidate : null;
       }

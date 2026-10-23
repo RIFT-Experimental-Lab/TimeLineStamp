@@ -38,7 +38,6 @@ def public_status(store: Store, now: datetime) -> dict:
         "first_full_day": store.first_full_day(),
         "current": store.latest_day(),
         "history": store.history(30),
-        "progress": store.progress(),
         "source_names": SOURCE_NAMES,
     }
 
@@ -83,16 +82,35 @@ class GitHubPublisher:
                 return None
             raise
 
+    def _published_day(self, token: str) -> str | None:
+        try:
+            response = self._request(token, "GET")
+        except HTTPError as exc:
+            if exc.code == 404:
+                return None
+            raise
+        content = response.get("content")
+        if not isinstance(content, str):
+            raise ValueError("GitHub status file has no content")
+        status = json.loads(base64.b64decode(content))
+        if status.get("format") != "timelinestamp-status-v1":
+            raise ValueError("GitHub status file has an unexpected format")
+        current = status.get("current")
+        return current.get("day") if isinstance(current, dict) else None
+
     def publish_once(self) -> None:
         token = self._token()
         snapshot = public_status(self.store, utc_now())
+        if snapshot["current"] is None:
+            raise ValueError("No sealed daily record to publish")
         content = base64.b64encode(canonical(snapshot) + b"\n").decode("ascii")
+        identity = {**COMMIT_IDENTITY, "date": snapshot["published_at"]}
         body = {
             "message": "Update Timelinestamp status " + snapshot["published_at"],
             "content": content,
             "branch": "main",
-            "author": COMMIT_IDENTITY,
-            "committer": COMMIT_IDENTITY,
+            "author": identity,
+            "committer": identity,
         }
         for attempt in range(2):
             sha = self._current_sha(token)
@@ -108,20 +126,26 @@ class GitHubPublisher:
                 if exc.code != 409 or attempt:
                     raise
 
+    def publish_new_day(self) -> str | None:
+        current = self.store.latest_day()
+        if current is None:
+            return None
+        day = current["day"]
+        published_day = self._published_day(self._token())
+        if published_day is None or published_day < day:
+            self.publish_once()
+        return day
+
     def run(self) -> None:
-        next_due = 0.0
-        last_attempt_day: str | None = None
-        has_attempted = False
+        next_retry = 0.0
+        last_checked_day: str | None = None
         while not self.stop.is_set():
             current = self.store.latest_day()
             day = current["day"] if current else None
-            if time.monotonic() >= next_due or (has_attempted and day != last_attempt_day):
-                last_attempt_day = day
-                has_attempted = True
+            if day is not None and day != last_checked_day and time.monotonic() >= next_retry:
                 try:
-                    self.publish_once()
-                    next_due = time.monotonic() + 3600
+                    last_checked_day = self.publish_new_day()
                 except Exception as exc:
                     LOG.warning("GitHub publication failed: %s", exc)
-                    next_due = time.monotonic() + 300
+                    next_retry = time.monotonic() + 300
             self.stop.wait(30)

@@ -23,7 +23,7 @@ Version 1 expects 288 pulses per beacon and up to 1,440 one-minute entries per N
 
 ## What the public page shows
 
-The site in [`docs/`](docs/) is static. The server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, current collection counts, and the publication time. A separate, fixed [initial snapshot](docs/data/initial.json) was calculated from the measurements collected on 2026-10-22 before the first full UTC day. The page labels its number as incomplete and keeps it in the archive after daily records begin. It is not a daily coefficient. The page marks delayed status updates.
+The site in [`docs/`](docs/) is static. After each daily seal, the server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, and the publication time. It does not publish current collection progress. A separate, fixed [initial snapshot](docs/data/initial.json) was calculated from the measurements collected on 2026-10-22 before the first full UTC day. The page labels its number as incomplete and keeps it in the archive after daily records begin. It is not a daily coefficient. The page marks a daily publication as delayed if the next record does not arrive.
 
 Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The browser never connects directly to the server.
 

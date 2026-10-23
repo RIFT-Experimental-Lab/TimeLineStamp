@@ -114,7 +114,7 @@ def main() -> None:
     catalog = json.loads(catalog_match.group(1))
     public_catalog = {key: value for key, value in catalog.items() if key in visible.values}
     page = page[:catalog_match.start(1)] + json.dumps(public_catalog, ensure_ascii=False).replace("</", "<\\/") + page[catalog_match.end(1):]
-    page = page.replace('</body>', '  <script src="./app.js?v=initial-1" defer></script>\n</body>', 1)
+    page = page.replace('</body>', '  <script src="./app.js?v=daily-1" defer></script>\n</body>', 1)
     if "__" in page and re.search(r"__[A-Z_]+__", page):
         raise ValueError("Unresolved template marker")
     DOCS.mkdir(exist_ok=True)
