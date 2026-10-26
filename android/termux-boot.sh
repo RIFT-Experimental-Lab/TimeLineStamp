@@ -19,6 +19,10 @@ if [ ! -f "$project_dir/timelinestamp.py" ]; then
 fi
 
 termux-wake-lock
+if [ "${TIMELINESTAMP_DOWNLOADS_ENABLED:-0}" = "1" ]; then
+    python "$project_dir/public_downloads.py" --db "$project_dir/data/timelinestamp.sqlite3" \
+        --repo "$repo" --token-file "$token_file" >/dev/null 2>&1 &
+fi
 if [ -f "$HOME/.config/timelinestamp/ssh.env" ]; then
     python "$project_dir/android/ssh-watchdog.py" >/dev/null 2>&1 &
 fi

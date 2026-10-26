@@ -1,0 +1,8 @@
+.raw-download { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:16px; align-items:end; margin-top:22px; padding:18px; border:1px solid var(--line); background:#0c1416; }
+.raw-download p { margin:7px 0 0; color:#9fafaa; font-size:11px; line-height:1.6; }
+.raw-download label span { display:block; margin-bottom:7px; color:#aabdb1; font:10px var(--mono); }
+.raw-download input,.raw-download button { border:1px solid #65786a; padding:10px; background:#121d19; color:#dfd7c2; font:11px var(--mono); min-height:40px; }
+.raw-download button { cursor:pointer; }
+.raw-download button:disabled { opacity:.5; cursor:wait; }
+.raw-download #raw-status { grid-column:1/-1; margin:0; }
+@media(max-width:650px) { .raw-download { grid-template-columns:1fr 1fr; } .raw-download>div { grid-column:1/-1; } .raw-download input { width:100%; } }

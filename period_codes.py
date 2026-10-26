@@ -69,7 +69,7 @@ def ensure_period_codes(store) -> None:
         days = db.execute("SELECT day,digest,quality,counts,manifest FROM days ORDER BY day").fetchall()
         existing = {(row["scope"], row["start_utc"]) for row in db.execute(
             "SELECT scope,start_utc FROM period_codes")}
-    by_day = {row["day"]: row for row in days}
+    by_day = {row["day"]: row for row in store.sealed_records()}
     pending = []
 
     for row in days:
@@ -94,6 +94,8 @@ def ensure_period_codes(store) -> None:
             pending.append(_row("day4h", segment_start, segment_end, digest, quality))
             existing.add(key)
 
+    for row in by_day.values():
+        start = _day_start(row["day"])
         key = ("week_day", stamp(start))
         if key not in existing:
             digest = _digest({"format": FORMAT, "scope": "week_day", "day_utc": row["day"],

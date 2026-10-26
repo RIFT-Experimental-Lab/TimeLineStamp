@@ -12,13 +12,7 @@ mkdir -p "$archive_dir"
 archive="$archive_dir/TimeLineStamp-android.tar.gz"
 temporary="$(mktemp "$archive_dir/.TimeLineStamp-android.XXXXXX")"
 trap 'rm -f "$temporary"' EXIT
-tar -czf "$temporary" -C "$project_dir" \
-  timelinestamp.py publish_github.py backup_store.py test_now.py test_now.command \
-  v2_sources.py v2_sources.json probe_v2_sources.py v2_toggle.py period_codes.py \
-  README.md ANDROID.md GITHUB_PAGES.md \
-  docs/index.html docs/style.css docs/app.js docs/.nojekyll docs/data/status.json \
-  android/config.example android/install-termux.sh android/termux-boot.sh \
-  android/enable-ssh.sh android/ssh-watchdog.py android/package.command
+tar --uid 0 --gid 0 --uname rift --gname rift -czf "$temporary" -C "$project_dir" -T "$project_dir/android/package-files.txt"
 tar -tzf "$temporary" >/dev/null
 mv -f "$temporary" "$archive"
 shasum -a 256 "$archive" > "$archive.sha256"

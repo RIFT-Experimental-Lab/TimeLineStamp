@@ -464,6 +464,15 @@ code { color: #c7d8c9; font: .95em var(--mono); }
 }
 
 
+.raw-download { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:16px; align-items:end; margin-top:22px; padding:18px; border:1px solid var(--line); background:#0c1416; }
+.raw-download p { margin:7px 0 0; color:#9fafaa; font-size:11px; line-height:1.6; }
+.raw-download label span { display:block; margin-bottom:7px; color:#aabdb1; font:10px var(--mono); }
+.raw-download input,.raw-download button { border:1px solid #65786a; padding:10px; background:#121d19; color:#dfd7c2; font:11px var(--mono); min-height:40px; }
+.raw-download button { cursor:pointer; }
+.raw-download button:disabled { opacity:.5; cursor:wait; }
+.raw-download #raw-status { grid-column:1/-1; margin:0; }
+@media(max-width:650px) { .raw-download { grid-template-columns:1fr 1fr; } .raw-download>div { grid-column:1/-1; } .raw-download input { width:100%; } }
+
 </style>
 </head>
 <body>
@@ -543,7 +552,8 @@ code { color: #c7d8c9; font: .95em var(--mono); }
         <section class="section" id="archive" aria-labelledby="archive-title">
           <div class="section-head"><div><span class="section-index">05 / ARCHIVE</span><h2 id="archive-title">Previous records</h2></div><p>Each daily record is sealed once. The coefficient alone cannot verify a record without its full hash.</p></div>
           <div class="record-table"><table><thead><tr><th>UTC day</th><th>Coefficient</th><th>Quality</th><th>SHA-256</th></tr></thead><tbody id="history"></tbody></table></div>
-          <div class="table-foot"><span id="archive-count"></span><span id="archive-note"></span></div>
+          <div class="table-foot"><span id="archive-count"></span><span id="archive-note"></span></div><form class="raw-download" id="raw-download-form"><div><span class="micro" id="raw-title"></span><p id="raw-description"></p></div><label><span id="raw-date-label"></span><input type="date" id="raw-day" required></label><button type="submit" id="raw-button"></button><p id="raw-status" role="status"></p></form>
+
         </section>
 
         <section class="section method" id="protocol" aria-labelledby="protocol-title">
@@ -643,6 +653,6 @@ code { color: #c7d8c9; font: .95em var(--mono); }
   try { saved = localStorage.getItem(storageKey) || "en"; } catch (_) { /* Keep the English default. */ }
   setLanguage(saved);
 })();</script>
-  <script src="./app.js?v=period-1" defer></script>
+  <script src="./app.js?v=archives-1" defer></script>
 </body>
 </html>

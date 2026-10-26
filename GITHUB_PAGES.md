@@ -19,4 +19,6 @@
 
 После подключения телефона он будет добавлять коммиты с обновлением `docs/data/status.json` в `main`. Перед последующей отправкой изменений с Mac нужно сначала получить эти коммиты (`git pull --rebase`), чтобы не столкнуться с расхождением веток.
 
+Суточный статус новой версии включает компактное поле `recovery` со всеми опубликованными дневными записями и хешами частей периодов. Сырых измерений в нём нет. Отдельный `docs/data/downloads.json` хранит только публичный HTTPS-адрес сервера архивов. Супервизор меняет его после создания и проверки нового туннеля; повторная публикация того же адреса коммит не создаёт. Если адрес ещё не настроен, кнопка сообщает об этом. Сайт проверяет каталог сервера при запросе скачивания. Перенос и ограничения туннеля: [RECOVERY.md](RECOVERY.md).
+
 Источники: [настройка публикации Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), [GitHub Contents API](https://docs.github.com/en/rest/repos/contents), [ограничения Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits).

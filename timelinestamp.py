@@ -121,6 +121,10 @@ class Store:
                     created_at TEXT NOT NULL,
                     PRIMARY KEY (scope, start_utc)
                 );
+                CREATE TABLE IF NOT EXISTS recovered_days (
+                    day TEXT PRIMARY KEY, created_at TEXT NOT NULL, digest TEXT NOT NULL,
+                    coefficient TEXT, quality TEXT NOT NULL, counts TEXT NOT NULL
+                );
             """)
             db.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('started_at',?)", (iso(utc_now()),))
         ensure_period_codes(self)
@@ -138,6 +142,13 @@ class Store:
         return parse_utc(row["value"])
 
     def first_full_day(self) -> str:
+        with self.connect() as db:
+            original = db.execute("SELECT value FROM meta WHERE key='experiment_first_full_day'").fetchone()
+        if original:
+            return original["value"]
+        return self.collection_first_full_day()
+
+    def collection_first_full_day(self) -> str:
         started = self.started_at()
         return (started.date() + timedelta(days=1)).isoformat()
 
@@ -179,7 +190,8 @@ class Store:
 
     def day_exists(self, day: str) -> bool:
         with self.connect() as db:
-            return db.execute("SELECT 1 FROM days WHERE day=?", (day,)).fetchone() is not None
+            return db.execute("SELECT day FROM days WHERE day=? UNION SELECT day FROM recovered_days WHERE day=?",
+                              (day, day)).fetchone() is not None
 
     def _v1_manifest(self, day: str) -> tuple[dict, dict]:
         start = datetime.fromisoformat(day).replace(tzinfo=timezone.utc)
@@ -266,7 +278,14 @@ class Store:
     def get_day(self, day: str) -> dict | None:
         with self.connect() as db:
             row = db.execute("SELECT day,created_at,digest,coefficient,quality,counts FROM days WHERE day=?", (day,)).fetchone()
+            if row is None:
+                row = db.execute("SELECT * FROM recovered_days WHERE day=?", (day,)).fetchone()
         return dict(row) | {"counts": json.loads(row["counts"])} if row else None
+
+    def sealed_records(self) -> list[dict]:
+        with self.connect() as db:
+            rows = db.execute("SELECT day FROM days UNION SELECT day FROM recovered_days ORDER BY day").fetchall()
+        return [self.get_day(row["day"]) for row in rows]
 
     def get_manifest(self, day: str) -> dict | None:
         with self.connect() as db:
@@ -275,12 +294,12 @@ class Store:
 
     def latest_day(self) -> dict | None:
         with self.connect() as db:
-            row = db.execute("SELECT day FROM days ORDER BY day DESC LIMIT 1").fetchone()
+            row = db.execute("SELECT day FROM days UNION SELECT day FROM recovered_days ORDER BY day DESC LIMIT 1").fetchone()
         return self.get_day(row["day"]) if row else None
 
     def history(self, limit: int = 30) -> list[dict]:
         with self.connect() as db:
-            rows = db.execute("SELECT day FROM days ORDER BY day DESC LIMIT ?", (limit,)).fetchall()
+            rows = db.execute("SELECT day FROM days UNION SELECT day FROM recovered_days ORDER BY day DESC LIMIT ?", (limit,)).fetchall()
         return [self.get_day(row["day"]) for row in rows]
 
     def progress(self) -> dict:
@@ -407,7 +426,7 @@ class Collector:
         v2_start = self.store.v2_settings()["start_day_utc"]
         last_v1_due = now.date() - timedelta(days=1) if (now.hour, now.minute) >= (0, 15) else now.date() - timedelta(days=2)
         last_v2_due = (now - timedelta(days=2, minutes=15)).date() - timedelta(days=1)
-        first = datetime.fromisoformat(self.store.first_full_day()).date()
+        first = datetime.fromisoformat(self.store.collection_first_full_day()).date()
         while first <= max(last_v1_due, last_v2_due):
             day = first.isoformat()
             due = last_v2_due if v2_start and day >= v2_start else last_v1_due
@@ -416,7 +435,7 @@ class Collector:
             first += timedelta(days=1)
 
     def run(self) -> None:
-        LOG.info("Collector started; first full day: %s", self.store.first_full_day())
+        LOG.info("Collector started; first full day on this installation: %s", self.store.collection_first_full_day())
         restart_request = self.store.path.with_suffix(self.store.path.suffix + ".restart")
         while not self.stop.is_set():
             if restart_request.exists():

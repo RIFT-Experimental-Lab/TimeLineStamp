@@ -16,6 +16,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from timelinestamp import SOURCE_NAMES, V2_SOURCES, Store, canonical, iso, utc_now
 from period_codes import ensure_period_codes, public_period_codes
+from recovery import checkpoint
 
 
 LOG = logging.getLogger("timelinestamp.publisher")
@@ -43,6 +44,7 @@ def public_status(store: Store, now: datetime) -> dict:
         "v2_shadow_start_day_utc": v2["shadow_start_day_utc"],
         "v2_enabled_source_count": len(v2["enabled"]),
         "period_codes": public_period_codes(store, now.date()),
+        "recovery": checkpoint(store),
         "current": store.latest_day(),
         "history": store.history(30),
         "source_names": SOURCE_NAMES | {source.id: f"{source.group} · {source.target}" for source in V2_SOURCES},
@@ -79,7 +81,10 @@ class GitHubPublisher:
             "X-GitHub-Api-Version": "2022-11-28",
         })
         with self.opener.open(request, timeout=20) as response:
-            return json.loads(response.read(1_000_001))
+            body = response.read(16_000_001)
+            if len(body) > 16_000_000:
+                raise ValueError("GitHub response exceeds 16 MB")
+            return json.loads(body)
 
     def _current_sha(self, token: str) -> str | None:
         try:

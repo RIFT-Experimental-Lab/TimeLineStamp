@@ -75,6 +75,7 @@ def main() -> None:
     period_css = (ROOT / "period_codes.css").read_text(encoding="utf-8")
     period_panel = (ROOT / "period_codes_panel.html").read_text(encoding="utf-8")
     page = page.replace("</style>", period_css + "\n</style>", 1)
+    page = page.replace("</style>", (ROOT / "downloads.css").read_text(encoding="utf-8") + "\n</style>", 1)
     page = replace_once(page, r'(</div>\s*</section>\s*<section class="comparison")',
         '</div>' + period_panel + '</section><section class="comparison"')
     page = replace_once(page, r'<div class="facts".*?(?=\s*<section class="section theory")',
@@ -92,6 +93,8 @@ def main() -> None:
     page = page.replace('<tbody></tbody>', '<tbody id="history"></tbody>', 1)
     page = replace_once(page, r'<div class="table-foot">.*?</div>',
         '<div class="table-foot"><span id="archive-count"></span><span id="archive-note"></span></div>')
+    page = page.replace('<span id="archive-note"></span></div>', '<span id="archive-note"></span></div>' +
+                        (ROOT / "downloads_panel.html").read_text(encoding="utf-8"), 1)
     page = replace_once(page, r'<p class="library-endnote">.*?</p>',
         '<p class="library-endnote" id="library-endnote"></p>')
     page = replace_once(page, r'<footer class="footer"><span>.*?</span>',
@@ -119,7 +122,7 @@ def main() -> None:
     catalog = json.loads(catalog_match.group(1))
     public_catalog = {key: value for key, value in catalog.items() if key in visible.values}
     page = page[:catalog_match.start(1)] + json.dumps(public_catalog, ensure_ascii=False).replace("</", "<\\/") + page[catalog_match.end(1):]
-    page = page.replace('</body>', '  <script src="./app.js?v=period-1" defer></script>\n</body>', 1)
+    page = page.replace('</body>', '  <script src="./app.js?v=archives-1" defer></script>\n</body>', 1)
     if "__" in page and re.search(r"__[A-Z_]+__", page):
         raise ValueError("Unresolved template marker")
     DOCS.mkdir(exist_ok=True)

@@ -85,6 +85,12 @@
       format:'格式', weekDay:'UTC 日期', monthBlock:'UTC 日期', monthName:'UTC 月份'},
   };
   const periodAlphabets = {hex:'0123456789ABCDEF', base32:'0123456789ABCDEFGHJKMNPQRSTVWXYZ', base58:'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'};
+  const rawWords = {
+    en:{title:'RAW DATA / UTC DAY',description:'Request a compressed snapshot of stored observations and the sealed daily manifest. Late shadow inputs may appear in a newer snapshot.',date:'UTC date',button:'Download day archive',hint:'Availability is checked when you request an archive.',checking:'Checking the archive server…',offline:'The archive server is temporarily unavailable. Please try again later.',notConnected:'The archive service has not been connected yet.',missing:'Raw data for this date are unavailable on the current server.',sent:'Download requested. If no file appears, try again.'},
+    ru:{title:'СЫРЫЕ ДАННЫЕ / СУТКИ UTC',description:'Сжатый снимок сохранённых измерений и зафиксированный суточный манифест. Поздние теневые данные могут появиться в новой версии снимка.',date:'Дата UTC',button:'Скачать архив за сутки',hint:'Доступность проверяется при запросе архива.',checking:'Проверяем сервер архивов…',offline:'Сервер архивов временно недоступен. Попробуйте позже.',notConnected:'Сервис архивов ещё не подключён.',missing:'На текущем сервере нет сырых данных за эту дату.',sent:'Скачивание запрошено. Если файл не появился, попробуйте ещё раз.'},
+    zh:{title:'原始数据 / UTC 日期',description:'下载已保存观测数据和已封存每日清单的压缩快照。延迟到达的影子数据可能出现在更新版本中。',date:'UTC 日期',button:'下载每日档案',hint:'请求档案时将检查可用性。',checking:'正在检查档案服务器…',offline:'档案服务器暂时不可用，请稍后重试。',notConnected:'档案服务尚未连接。',missing:'当前服务器没有该日期的原始数据。',sent:'已请求下载。如果未出现文件，请重试。'},
+  };
+  let rawMessage = 'hint';
   let periodFormat = 'hex';
   let snapshot = null;
   let initial = null;
@@ -137,6 +143,41 @@
       for (const [name, value] of Object.entries({x1:x, y1:(43-height).toFixed(1), x2:x, y2:43})) line.setAttribute(name, String(value));
       graph.appendChild(line);
     });
+  }
+  function renderRawLabels() {
+    const words = rawWords[lang()];
+    put('raw-title', words.title); put('raw-description', words.description);
+    put('raw-date-label', words.date); put('raw-button', words.button); put('raw-status', words[rawMessage]);
+    const input = $('raw-day');
+    if (!input.value && snapshot?.current?.day) input.value = snapshot.current.day;
+    if (snapshot?.first_full_day) input.min = snapshot.first_full_day;
+    if (snapshot?.current?.day) input.max = snapshot.current.day;
+  }
+  async function downloadDay(event) {
+    event.preventDefault();
+    const button = $('raw-button');
+    if (button.disabled) return;
+    button.disabled = true; rawMessage = 'checking'; renderRawLabels();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch(`./data/downloads.json?t=${Date.now()}`, {cache:'no-store',signal:controller.signal});
+      if (!response.ok) throw new Error('metadata');
+      const metadata = await response.json();
+      if (metadata.format !== 'timelinestamp-downloads-v1' || !metadata.base_url) { rawMessage = 'notConnected'; return; }
+      if (!/^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/.test(metadata.base_url)) throw new Error('endpoint');
+      const catalogResponse = await fetch(metadata.base_url + '/v1/catalog', {cache:'no-store',signal:controller.signal});
+      if (!catalogResponse.ok) throw new Error('catalog');
+      const catalog = await catalogResponse.json();
+      const day = $('raw-day').value;
+      if (catalog.format !== 'timelinestamp-archive-catalog-v1' || !Array.isArray(catalog.days)) throw new Error('catalog');
+      if (!catalog.days.some(record => record.day === day)) { rawMessage = 'missing'; return; }
+      const link = document.createElement('a');
+      link.href = `${metadata.base_url}/v1/day/${encodeURIComponent(day)}.tar.gz`;
+      link.rel = 'noopener'; document.body.appendChild(link); link.click(); link.remove();
+      rawMessage = 'sent';
+    } catch (_) { rawMessage = 'offline'; }
+    finally { clearTimeout(timeout); button.disabled = false; renderRawLabels(); }
   }
   function renderPeriodCodes(data) {
     const words = periodWords[lang()];
@@ -302,6 +343,7 @@
     put('quality', isInitial ? word.initialState : current ? current.quality === 'good' ? word.good : current.quality === 'partial' ? word.partial : word.noQuantum : word.collecting);
     renderHash(record?.digest);
     renderPeriodCodes(data);
+    renderRawLabels();
     put('period-label', word.period);
     put('period', isInitial ? shownDay : current ? shownDay : data.first_full_day ? `${word.firstDay}: ${shownDay}` : '—');
     put('period-note', isInitial ? `${word.initialPeriod}: ${utcStamp(initial.period_start)} – ${utcStamp(initial.created_at)}` : '00:00–24:00 UTC');
@@ -340,6 +382,7 @@
     render();
   }
   document.querySelectorAll('.language-switch [data-lang]').forEach(button => button.addEventListener('click', render));
+  $('raw-download-form').addEventListener('submit', downloadDay);
   document.querySelectorAll('[data-pc-format]').forEach(button => button.addEventListener('click', () => {
     periodFormat = button.dataset.pcFormat;
     renderPeriodCodes(snapshot);

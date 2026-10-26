@@ -5,3 +5,5 @@ TIMELINESTAMP_PROJECT_DIR="$HOME/TimeLineStamp"
 TIMELINESTAMP_TOKEN_FILE="$HOME/.config/timelinestamp/github-token"
 TIMELINESTAMP_BACKUP_DIR="$HOME/storage/shared/TimeLineStamp-backups"
 TIMELINESTAMP_V2_CONFIG="$HOME/.config/timelinestamp/v2-sources.json"
+# Enable with android/enable-downloads.sh after checking public access.
+TIMELINESTAMP_DOWNLOADS_ENABLED="0"

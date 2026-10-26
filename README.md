@@ -27,7 +27,9 @@ Version 1 expects 288 pulses per beacon and up to 1,440 one-minute entries per N
 
 The site in [`docs/`](docs/) is static. After each daily seal, the server sends a small JSON snapshot to GitHub: the latest sealed record, up to 30 recent days, and the publication time. It does not publish current collection progress. A separate, fixed [initial snapshot](docs/data/initial.json) was calculated from the measurements collected on 2026-10-22 before the first full UTC day. The page labels its number as incomplete and keeps it in the archive after daily records begin. It is not a daily coefficient. The page marks a daily publication as delayed if the next record does not arrive.
 
-Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The browser never connects directly to the server.
+Raw source entries, the SQLite database, and the canonical manifests stay on the server. A complete manifest can be read from the local API for recalculation; it is not part of the public JSON snapshot. The regular page display reads GitHub snapshots; optional archive requests reach the read-only service through an HTTPS tunnel.
+
+An optional read-only archive service lets visitors request a compressed snapshot for a sealed UTC day from the server through an outbound HTTPS tunnel. It includes the sealed manifest and stored observations, including shadow inputs available at export time. The website checks availability when the download is requested. Until that service is connected, the button reports that archives are unavailable. See [RECOVERY.md](RECOVERY.md) for deployment and limitations of the experimental tunnel.
 
 Period codes are derived only from sealed daily records and stored immutably in `period_codes`. The public JSON includes their interval boundaries, full SHA-256 digests, quality, and short marks, but no raw measurements. The selectable HEX 16, BASE32, and BASE58 views derive from the same full digest; pending symbols on the page are visual placeholders and are never published as readings. Dates before the first full collection day remain unavailable.
 
@@ -40,6 +42,8 @@ python3 demo/build_public.py
 ```
 
 Deployment details are in [GITHUB_PAGES.md](GITHUB_PAGES.md). The unattended Android setup is in [ANDROID.md](ANDROID.md).
+
+The daily public status also retains a compact recovery checkpoint with all published daily records and closed period digests. A replacement collector can restore those marks without raw observations. [RECOVERY.md](RECOVERY.md) and the locally built transfer bundle cover complete SQLite backups, metadata-only recovery from Git, and restarting on a replacement Android device. Existing published records are preserved; interrupted days remain gaps.
 
 ## Run the collector locally
 
