@@ -1,0 +1,11 @@
+.widget-download { display:grid; grid-template-columns:minmax(0,1fr) 195px; gap:24px; align-items:center; padding:19px 22px; margin:17px 0 20px; border:1px solid #43534b; background:linear-gradient(110deg,#19251f,#101719 70%); }
+.widget-download h2 { margin:8px 0; color:var(--text); font-size:21px; font-weight:550; letter-spacing:-.025em; }
+.widget-download p { margin:0; max-width:520px; color:#aebdb1; font-size:11px; line-height:1.65; }
+.widget-download-meta { display:flex; flex-wrap:wrap; gap:7px 15px; margin-top:12px; color:#96a6a3; font:9px/1.5 var(--mono); }
+.widget-apk-link { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:13px 14px; border:1px solid #a6845b; background:#ae815314; color:#efbb7e; text-decoration:none; font:11px/1.4 var(--mono); }
+.widget-apk-link:hover { background:#ae815329; }
+.widget-apk-link span:last-child { font-size:19px; }
+.widget-download details { margin-top:11px; color:#aabbb0; font:10px/1.5 var(--mono); }
+.widget-download summary { cursor:pointer; }
+.widget-download details p { padding-top:9px; font-size:10px; }
+@media(max-width:650px) { .widget-download { grid-template-columns:1fr; gap:17px; padding:17px; } .widget-download-action { max-width:100%; } }

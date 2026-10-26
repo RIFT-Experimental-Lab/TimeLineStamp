@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">TimeLineStamp</string>
+    <string name="widget_description">The latest sealed UTC daily fingerprint</string>
+    <string name="refresh">Refresh</string>
+    <string name="waiting">AWAITING RECORD</string>
+    <string name="no_record">NO SEALED RECORD</string>
+    <string name="not_checked">R.I.F.T. / NOT YET SYNCED</string>
+    <string name="good">SEALED / COMPLETE DATA</string>
+    <string name="partial">SEALED / INCOMPLETE DATA</string>
+    <string name="unavailable">SEALED / NUMBER UNAVAILABLE</string>
+    <string name="cached">OFFLINE · SAVED READING</string>
+    <string name="failed">UPDATE FAILED · SAVED READING</string>
+    <string name="delayed">NEXT RECORD DELAYED</string>
+    <string name="checked">SYNC / %1$s</string>
+    <string name="offline_empty">OFFLINE / AWAITING CONNECTION</string>
+    <string name="add_widget">ADD TO HOME SCREEN  +</string>
+    <string name="open_site">OPEN EXPERIMENT  ↗</string>
+    <string name="instructions">Place this display on your home screen. Tap the reading to open the experiment; tap ↻ to sync the latest record.</string>
+    <string name="background_note">Checks every 30 minutes, subject to Android battery limits. The last record remains available offline.</string>
+    <string name="pin_unsupported">This launcher does not support adding from the app. Use the home screen widget menu.</string>
+    <string name="refresh_requested">Update requested</string>
+</resources>

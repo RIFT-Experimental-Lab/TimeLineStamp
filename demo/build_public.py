@@ -45,7 +45,7 @@ def replace_once(source: str, pattern: str, replacement: str) -> str:
     return result
 
 
-def main() -> None:
+def main(output: Path | None = None) -> None:
     build.main()
     local_dir = ROOT.parent.parent / "local"
     preview = (local_dir if local_dir.is_dir() else ROOT.parent) / "TimeLineStamp-demo.html"
@@ -76,8 +76,9 @@ def main() -> None:
     period_panel = (ROOT / "period_codes_panel.html").read_text(encoding="utf-8")
     page = page.replace("</style>", period_css + "\n</style>", 1)
     page = page.replace("</style>", (ROOT / "downloads.css").read_text(encoding="utf-8") + "\n</style>", 1)
+    page = page.replace("</style>", (ROOT / "widget_download.css").read_text(encoding="utf-8") + "\n</style>", 1)
     page = replace_once(page, r'(</div>\s*</section>\s*<section class="comparison")',
-        '</div>' + period_panel + '</section><section class="comparison"')
+        '</div>' + period_panel + '</section>' + (ROOT / "widget_download.html").read_text(encoding="utf-8") + '<section class="comparison"')
     page = replace_once(page, r'<div class="facts".*?(?=\s*<section class="section theory")',
         '<div class="facts" aria-label="Period details">'
         '<div class="fact"><span class="micro" id="period-label"></span><strong id="period"></strong><small id="period-note"></small></div>'
@@ -122,14 +123,17 @@ def main() -> None:
     catalog = json.loads(catalog_match.group(1))
     public_catalog = {key: value for key, value in catalog.items() if key in visible.values}
     page = page[:catalog_match.start(1)] + json.dumps(public_catalog, ensure_ascii=False).replace("</", "<\\/") + page[catalog_match.end(1):]
-    page = page.replace('</body>', '  <script src="./app.js?v=archives-1" defer></script>\n</body>', 1)
+    page = page.replace('</body>', '  <script src="./app.js?v=widget-1" defer></script>\n</body>', 1)
     if "__" in page and re.search(r"__[A-Z_]+__", page):
         raise ValueError("Unresolved template marker")
-    DOCS.mkdir(exist_ok=True)
-    destination = DOCS / "index.html"
+    destination = output if output is not None else DOCS / "index.html"
+    destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(page, encoding="utf-8")
     print(destination)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, help="Prepare a preview without replacing the public HTML")
+    main(parser.parse_args().output)

@@ -4,6 +4,12 @@
 
 **[Open the live TimeLineStamp page](https://rift-experimental-lab.github.io/TimeLineStamp/)** · [Public status data](https://rift-experimental-lab.github.io/TimeLineStamp/data/status.json)
 
+An [Android home screen widget](https://rift-experimental-lab.github.io/TimeLineStamp/#android-widget)
+displays the latest sealed daily number, its UTC date, and data completeness.
+[Download the APK](https://rift-experimental-lab.github.io/TimeLineStamp/downloads/TimeLineStamp-widget-android-0.2.1.apk)
+for Android 8 or newer. The interface is in English and the last reading stays
+available offline. See the [widget guide](widgets/android/README.md) for installation and source code.
+
 ## The experiment
 
 Imagine that an intervention in the past changes the course of a day. Some physical measurements made during that day might then have different outcomes. TimeLineStamp gives each completed day one number to compare with memory.

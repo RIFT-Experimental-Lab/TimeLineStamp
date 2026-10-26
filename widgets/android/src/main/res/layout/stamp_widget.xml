@@ -1,0 +1,46 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+    android:background="@drawable/widget_background" android:padding="1dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical"
+        android:background="#192520" android:paddingLeft="9dp">
+        <TextView android:layout_width="23dp" android:layout_height="wrap_content" android:text="T."
+            android:textColor="#EFBB7E" android:fontFamily="monospace" android:textSize="13sp" />
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:text="TIMELINESTAMP" android:textColor="#DBE2DE" android:fontFamily="sans-serif-medium" android:textSize="8sp" android:letterSpacing="0.1" />
+        <TextView android:id="@+id/refresh" android:layout_width="36dp" android:layout_height="match_parent"
+            android:text="↻" android:gravity="center" android:textSize="20sp" android:textColor="#AEC4B7"
+            android:contentDescription="@string/refresh" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:orientation="vertical" android:gravity="center_vertical" android:paddingLeft="9dp" android:paddingRight="9dp" android:paddingTop="7dp" android:paddingBottom="6dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="TS-01 / DAILY FINGERPRINT" android:textSize="6sp" android:letterSpacing="0.08"
+            android:textColor="#96A69A" android:fontFamily="monospace" android:includeFontPadding="false" />
+        <LinearLayout android:id="@+id/number" android:layout_width="match_parent" android:layout_height="48dp"
+            android:orientation="horizontal" android:layout_marginTop="6dp" android:layout_marginBottom="7dp"
+            android:importantForAccessibility="yes" android:contentDescription="@string/no_record">
+            <TextView android:id="@+id/digit0" style="@style/DigitCell" />
+            <TextView android:layout_width="12dp" android:layout_height="match_parent" android:text="."
+                android:textSize="40sp" android:fontFamily="sans-serif" android:gravity="center" android:includeFontPadding="false" android:textColor="#EFBB7E" />
+            <TextView android:id="@+id/digit1" style="@style/DigitCell" />
+            <TextView android:id="@+id/digit2" style="@style/DigitCell" />
+            <TextView android:id="@+id/digit3" style="@style/DigitCell" />
+            <TextView android:id="@+id/digit4" style="@style/DigitCell" />
+            <TextView android:id="@+id/digit5" style="@style/DigitCell" />
+            <TextView android:id="@+id/digit6" style="@style/DigitCell" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+            <TextView android:id="@+id/utc_day" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:text="@string/waiting" android:textColor="#DBE2DE" android:fontFamily="monospace" android:textSize="8sp" android:maxLines="1" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="UTC"
+                android:textColor="#96A6A3" android:fontFamily="monospace" android:textSize="7sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/quality" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="3dp" android:text="@string/no_record" android:textColor="#AEC4B7"
+            android:fontFamily="monospace" android:textSize="6sp" android:maxLines="1" />
+    </LinearLayout>
+    <TextView android:id="@+id/sync_state" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingLeft="9dp" android:paddingRight="9dp" android:paddingTop="5dp" android:paddingBottom="5dp"
+        android:background="#0C1315" android:text="@string/not_checked" android:textColor="#96A6A3"
+        android:fontFamily="monospace" android:textSize="6sp" android:maxLines="1" />
+</LinearLayout>
